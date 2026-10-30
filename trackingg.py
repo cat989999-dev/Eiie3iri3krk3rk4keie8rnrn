@@ -416,48 +416,49 @@ async def generate_leaderboard_text(period, page):
     ldb_cache[cache_key] = {"text": text, "max_pages": max_pages, "time": now}
     return text, max_pages
 
-# ================= SAFE FORCE SUBSCRIBE LOGIC =================
-async def is_user_subscribed(client: Client, user_id: int) -> bool:
+# ================= DYNAMIC FORCE SUBSCRIBE LOGIC =================
+async def check_subscription_status(client: Client, user_id: int):
     if await is_admin(user_id):
-        return True
+        return True, True
     
     is_in_channel = False
     is_in_group = False
     
-    # FIXED ERROR HERE
     try:
         member = await client.get_chat_member(FSUB_CHANNEL, user_id)
         if member.status in [ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.MEMBER, ChatMemberStatus.RESTRICTED]:
             is_in_channel = True
     except Exception:
-        is_in_channel = False  # Should be False, not True
+        is_in_channel = False
         
     try:
         member = await client.get_chat_member(TRACK_GROUP_ID, user_id)
         if member.status in [ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.MEMBER, ChatMemberStatus.RESTRICTED]:
             is_in_group = True
     except Exception:
-        is_in_group = False    # Should be False, not True
+        is_in_group = False
         
-    return is_in_channel and is_in_group
-
-def get_fsub_keyboard():
-    channel_url = f"https://t.me/{FSUB_CHANNEL.replace('@', '')}"
-    return {
-        "inline_keyboard": [
-            [btn("Join Channel", url=channel_url, style="primary", icon="📢")],
-            [btn("Join Group", url=GROUP_INVITE_LINK, style="primary", icon="👥")],
-            [btn("Check", data="check_fsub", style="success", icon="✅")]
-        ]
-    }
+    return is_in_channel, is_in_group
 
 async def pass_fsub(client: Client, message_or_call):
     user_id = message_or_call.from_user.id
-    if await is_user_subscribed(client, user_id):
+    is_in_channel, is_in_group = await check_subscription_status(client, user_id)
+
+    if is_in_channel and is_in_group:
         return True
     
-    text = f"{pe('⚠️')} <b>Please join our official channel and group to use this bot!</b>\n\nClick the buttons below to join, then click <b>Check {pe('✅')}</b>."
-    markup = get_fsub_keyboard()
+    text = f"{pe('⚠️')} <b>Please join our official channels to use this bot!</b>\n\nClick the buttons below to join, then click <b>Check {pe('✅')}</b>."
+    
+    kb_list = []
+    channel_url = f"https://t.me/{FSUB_CHANNEL.replace('@', '')}"
+    
+    if not is_in_channel:
+        kb_list.append([btn("Join Channel", url=channel_url, style="primary", icon="📢")])
+    if not is_in_group:
+        kb_list.append([btn("Join Group", url=GROUP_INVITE_LINK, style="primary", icon="👥")])
+        
+    kb_list.append([btn("Check", data="check_fsub", style="success", icon="✅")])
+    markup = {"inline_keyboard": kb_list}
     
     if isinstance(message_or_call, Message):
         await send_msg(message_or_call.chat.id, text, markup=markup)
@@ -825,7 +826,12 @@ async def handle_join_request(client: Client, request: ChatJoinRequest):
         inviter_id = int(request.invite_link.name.split("_")[1])
         inviter_data = await get_or_create_user(inviter_id)
         
-        if user_id not in inviter_data.get("affiliates", []) and user_id not in inviter_data.get("left_affiliates", []):
+        # Check globally if the user has EVER been an affiliate or left affiliate of anyone
+        existing_affiliate = await users_db.find_one({
+            "$or": [{"affiliates": user_id}, {"left_affiliates": user_id}]
+        })
+        
+        if not existing_affiliate:
             await users_db.update_one({"user_id": inviter_id}, {"$addToSet": {"affiliates": user_id}})
             
             new_count = len(inviter_data.get("affiliates", [])) + 1
@@ -1453,14 +1459,12 @@ async def cb_menu_withdraw(client: Client, call: CallbackQuery):
         
     user = await get_or_create_user(user_id, call.from_user)
     
-    # 20$ Check updated here for menu access as well
     if user["balance"] < 20: 
         markup = kb([(TR[lang]["btn_back"], "menu_main", "danger", "🔙")])
         return await edit_msg(call.message.chat.id, call.message.id, f"{pe('❌')} Your wallet balance is ${round(user['balance'], 2)}. Minimum withdrawal is $20.", markup=markup)
         
     user_states[user_id] = {"state": "wait_for_method", "amount": user["balance"]}
 
-    # Sirf Redcube Wallet ka button rakha hai
     markup = kb(
         [("Redcube Wallet", "wd_method_redcube", "success", "🏦")], 
         [(TR[lang]["btn_back"], "menu_main", "danger", "🔙")]
@@ -1481,24 +1485,19 @@ async def cb_wd_method_redcube(client: Client, call: CallbackQuery):
     amount = state_info["amount"]
     method = "Redcube Wallet"
     
-    # User ka balance deduct karo
     await users_db.update_one({"user_id": user_id}, {"$inc": {"balance": -float(amount)}})
     del user_states[user_id]
     
-    # Name fetch for admin message
     name = call.from_user.first_name or "User"
     if call.from_user.last_name: name += f" {call.from_user.last_name}"
     safe_name = html.escape(name)
     
-    # Admin approval buttons
     btns = kb(
         [("Accept", f"wdone_{user_id}_{amount}", "success"), ("Reject", f"wrej_{user_id}_{amount}", "danger")]
     )
     
-    # Admin text (Bina kisi address ke)
     admin_text = f"{pe('🆕')} <b>Withdrawal Request ({method})</b>\n{pe('👨‍💻')} User: <a href='tg://user?id={user_id}'>{safe_name}</a> (<code>{user_id}</code>)\n{pe('💰')} Amount: ${amount}"
     
-    # Sabhi admins ko send karo
     admins = await admins_db.find().to_list(100)
     admin_withdraw_msgs[user_id] = {}
     for aid in set([OWNER_ID] + [a["user_id"] for a in admins]):
@@ -1507,11 +1506,8 @@ async def cb_wd_method_redcube(client: Client, call: CallbackQuery):
             if msg: admin_withdraw_msgs[user_id][aid] = msg['message_id']
         except: pass
         
-    # User ko success message dikhao
     markup = kb([(TR[lang]["btn_back"], "menu_main", "primary", "🔙")])
     await edit_msg(call.message.chat.id, call.message.id, f"{pe('✅')} Your {method} withdrawal request has been sent to admins.", markup=markup)
-
-# NOTE: cb_wd_method_ton function poori tarah se delete kar diya gaya hai.
 
 # ================= ADMIN BUTTON HANDLERS =================
 @app.on_callback_query(filters.regex("^tktacc_"))
@@ -1648,7 +1644,8 @@ async def cb_rain_join(client: Client, call: CallbackQuery):
 # ================= FSUB CHECK BUTTON HANDLER =================
 @app.on_callback_query(filters.regex("^check_fsub$"))
 async def cb_check_fsub(client: Client, call: CallbackQuery):
-    if await is_user_subscribed(client, call.from_user.id):
+    is_in_channel, is_in_group = await check_subscription_status(client, call.from_user.id)
+    if is_in_channel and is_in_group:
         await call.answer("Joined successfully! ✅", show_alert=True)
         user = await get_or_create_user(call.from_user.id, call.from_user)
         lang = await get_lang(call.from_user.id)
@@ -1661,7 +1658,7 @@ async def cb_check_fsub(client: Client, call: CallbackQuery):
         welcome_body = TR[lang]["welcome"].format(tag=REQUIRED_USERNAME_TAG, link=user.get('bio_link', 'No Link Generated'))
         await send_msg(call.message.chat.id, welcome_body, markup=get_main_menu(lang), disable_web_page_preview=True)
     else:
-        await call.answer("You haven't joined yet! Please join the channel first. ⚠️", show_alert=True)
+        await call.answer("You haven't joined all required chats yet! ⚠️", show_alert=True)
 
 @app.on_message(filters.private & filters.text & ~filters.regex(r"^/"))
 async def message_handler(client: Client, message: Message):
