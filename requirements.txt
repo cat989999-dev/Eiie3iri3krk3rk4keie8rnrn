@@ -1,0 +1,5 @@
+Pyrogram
+motor
+aiohttp
+dnspython
+TgCrypto
