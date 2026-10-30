@@ -12,7 +12,7 @@ import random
 import html
 import time
 import re
-from pyrogram import Client, filters, idle, enums
+from pyrogram import Client, filters, idle
 from pyrogram.types import Message, CallbackQuery, ChatJoinRequest, BotCommand
 from pyrogram.errors import UserNotParticipant
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -336,7 +336,8 @@ async def get_or_create_user(user_id, user_obj=None):
         user = {
             "user_id": user_id, "balance": 0.0, "bio_link": None, 
             "verified": False, "affiliates": [], "fake_affiliates": [], "left_affiliates": [],
-            "lang": "en", "won_draw": False, "name": name, "ever_joined_group": False
+            "lang": "en", "won_draw": False, "name": name,
+            "ever_joined_group": False # <-- New flag added
         }
         await users_db.insert_one(user)
     elif user_obj and (user.get("name") != name or user.get("name") == "User"):
@@ -423,18 +424,17 @@ async def is_user_subscribed(client: Client, user_id: int) -> bool:
     is_in_channel = False
     is_in_group = False
     
+    # 100% Accurate API calls for channel and group (bypasses pyrogram caches/errors)
     try:
-        member = await client.get_chat_member(FSUB_CHANNEL, user_id)
-        status_str = str(member.status).lower()
-        if "left" not in status_str and "kicked" not in status_str and "banned" not in status_str and "restricted" not in status_str:
+        res_channel = await tg("getChatMember", chat_id=FSUB_CHANNEL, user_id=user_id)
+        if res_channel and res_channel.get("status") in ["member", "administrator", "creator", "restricted"]:
             is_in_channel = True
     except Exception:
         is_in_channel = False 
         
     try:
-        member = await client.get_chat_member(TRACK_GROUP_ID, user_id)
-        status_str = str(member.status).lower()
-        if "left" not in status_str and "kicked" not in status_str and "banned" not in status_str and "restricted" not in status_str:
+        res_group = await tg("getChatMember", chat_id=TRACK_GROUP_ID, user_id=user_id)
+        if res_group and res_group.get("status") in ["member", "administrator", "creator", "restricted"]:
             is_in_group = True
     except Exception:
         is_in_group = False 
@@ -823,7 +823,6 @@ async def handle_join_request(client: Client, request: ChatJoinRequest):
         # Mark them as joined so they can never be counted again
         await users_db.update_one({"user_id": user_id}, {"$set": {"ever_joined_group": True}})
 
-        # Proceed with affiliate logic only if this is their first time ever joining
         if request.invite_link and request.invite_link.name and request.invite_link.name.startswith("Affiliate_"):
             inviter_id = int(request.invite_link.name.split("_")[1])
             inviter_data = await get_or_create_user(inviter_id)
