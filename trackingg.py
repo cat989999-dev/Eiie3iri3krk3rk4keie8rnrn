@@ -797,7 +797,7 @@ async def close_cmd(client: Client, message: Message):
         t_lang = await get_lang(target_id)
         await send_msg(target_id, TR[t_lang]["tkt_closed"])
     except: pass
-
+        
 # ================= BACKGROUND TRACKERS =================
 @app.on_chat_join_request(filters.chat(TRACK_GROUP_ID))
 async def handle_join_request(client: Client, request: ChatJoinRequest):
@@ -805,14 +805,18 @@ async def handle_join_request(client: Client, request: ChatJoinRequest):
     
     user = request.from_user
     full_name = f"{user.first_name or ''} {user.last_name or ''}".lower()
-    name_without_tag = full_name.replace(REQUIRED_USERNAME_TAG.lower(), "")
-    has_promo = "@" in name_without_tag or any(promo.lower() in full_name for promo in BANNED_PROMOS)
     
+    # Check for promos in name for auto reject (excluding @redcube)
+    clean_name = full_name.replace(REQUIRED_USERNAME_TAG.lower(), "")
+    has_promo = "@" in clean_name or any(promo.lower() in full_name for promo in BANNED_PROMOS)
+    
+    # Fake Account Auto Reject Logic
     if user.is_bot or getattr(user, 'is_fake', False) or getattr(user, 'is_scam', False) or getattr(user, 'is_restricted', False) or getattr(user, 'is_deleted', False) or has_promo:
         try:
             await client.decline_chat_join_request(TRACK_GROUP_ID, user_id)
         except: pass
         
+        # Add to fake_affiliates if they used an affiliate link
         if request.invite_link and request.invite_link.name and request.invite_link.name.startswith("Affiliate_"):
             inviter_id = int(request.invite_link.name.split("_")[1])
             await users_db.update_one({"user_id": inviter_id}, {"$addToSet": {"fake_affiliates": user_id}})
@@ -841,11 +845,15 @@ async def handle_join_request(client: Client, request: ChatJoinRequest):
 
 @app.on_chat_member_updated(filters.chat(TRACK_GROUP_ID))
 async def handle_member_update(client: Client, update):
-    old_status = update.old_chat_member.status if update.old_chat_member else None
-    new_status = update.new_chat_member.status if update.new_chat_member else None
+    old = update.old_chat_member
+    new = update.new_chat_member
     
-    if new_status in [ChatMemberStatus.LEFT, ChatMemberStatus.BANNED]:
-        left_user_id = update.new_chat_member.user.id
+    if not old or not new:
+        return
+        
+    # Check if a user actually LEFT or was BANNED
+    if old.status in [ChatMemberStatus.MEMBER, ChatMemberStatus.RESTRICTED, ChatMemberStatus.ADMINISTRATOR] and new.status in [ChatMemberStatus.LEFT, ChatMemberStatus.BANNED]:
+        left_user_id = new.user.id
         inviter = await users_db.find_one({"affiliates": left_user_id})
         if inviter:
             inviter_id = inviter["user_id"]
@@ -880,10 +888,10 @@ async def group_activity_tracker(client: Client, message: Message):
         except: pass
         return
         
-    # 2. Strict Promo/Username Warning Check
+    # 2. Strict Promo/Username Warning Check (Ignore REQUIRED_USERNAME_TAG)
     name_lower = full_name.lower()
-    name_without_tag = name_lower.replace(REQUIRED_USERNAME_TAG.lower(), "")
-    has_promo = "@" in name_without_tag or any(promo.lower() in name_lower for promo in BANNED_PROMOS)
+    clean_name = name_lower.replace(REQUIRED_USERNAME_TAG.lower(), "")
+    has_promo = "@" in clean_name or any(promo.lower() in name_lower for promo in BANNED_PROMOS)
     
     if has_promo:
         try:
@@ -1452,14 +1460,12 @@ async def cb_menu_withdraw(client: Client, call: CallbackQuery):
         
     user = await get_or_create_user(user_id, call.from_user)
     
-    # 20$ Check updated here for menu access as well
     if user["balance"] < 20: 
         markup = kb([(TR[lang]["btn_back"], "menu_main", "danger", "🔙")])
         return await edit_msg(call.message.chat.id, call.message.id, f"{pe('❌')} Your wallet balance is ${round(user['balance'], 2)}. Minimum withdrawal is $20.", markup=markup)
         
     user_states[user_id] = {"state": "wait_for_method", "amount": user["balance"]}
 
-    # Sirf Redcube Wallet ka button rakha hai
     markup = kb(
         [("Redcube Wallet", "wd_method_redcube", "success", "🏦")], 
         [(TR[lang]["btn_back"], "menu_main", "danger", "🔙")]
@@ -1480,24 +1486,19 @@ async def cb_wd_method_redcube(client: Client, call: CallbackQuery):
     amount = state_info["amount"]
     method = "Redcube Wallet"
     
-    # User ka balance deduct karo
     await users_db.update_one({"user_id": user_id}, {"$inc": {"balance": -float(amount)}})
     del user_states[user_id]
     
-    # Name fetch for admin message
     name = call.from_user.first_name or "User"
     if call.from_user.last_name: name += f" {call.from_user.last_name}"
     safe_name = html.escape(name)
     
-    # Admin approval buttons
     btns = kb(
         [("Accept", f"wdone_{user_id}_{amount}", "success"), ("Reject", f"wrej_{user_id}_{amount}", "danger")]
     )
     
-    # Admin text (Bina kisi address ke)
     admin_text = f"{pe('🆕')} <b>Withdrawal Request ({method})</b>\n{pe('👨‍💻')} User: <a href='tg://user?id={user_id}'>{safe_name}</a> (<code>{user_id}</code>)\n{pe('💰')} Amount: ${amount}"
     
-    # Sabhi admins ko send karo
     admins = await admins_db.find().to_list(100)
     admin_withdraw_msgs[user_id] = {}
     for aid in set([OWNER_ID] + [a["user_id"] for a in admins]):
@@ -1506,11 +1507,8 @@ async def cb_wd_method_redcube(client: Client, call: CallbackQuery):
             if msg: admin_withdraw_msgs[user_id][aid] = msg['message_id']
         except: pass
         
-    # User ko success message dikhao
     markup = kb([(TR[lang]["btn_back"], "menu_main", "primary", "🔙")])
     await edit_msg(call.message.chat.id, call.message.id, f"{pe('✅')} Your {method} withdrawal request has been sent to admins.", markup=markup)
-
-# NOTE: cb_wd_method_ton function poori tarah se delete kar diya gaya hai.
 
 # ================= ADMIN BUTTON HANDLERS =================
 @app.on_callback_query(filters.regex("^tktacc_"))
