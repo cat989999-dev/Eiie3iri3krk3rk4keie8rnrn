@@ -35,7 +35,7 @@ TRACK_GROUP_ID = -1003946482336
 REQUIRED_USERNAME_TAG = "@redcube"
 FSUB_CHANNEL = "@redcube_en"  
 GROUP_INVITE_LINK = "https://t.me/+rdKCTKOlxUE1Mjc8"
-BANNED_PROMOS = ["@raika", "@dices", "@booplay", "@axoms", "casino"]
+BANNED_PROMOS = ["@dices", "@raika", "@booplay", "@Axoms", "@giftsggapp", "@royaldices"]
 
 # ================= HTTP SESSION (For Fast API Calls) =================
 HTTP_SESSION: aiohttp.ClientSession | None = None
@@ -107,7 +107,6 @@ PREMIUM_EMOJIS = {
     "📢": "5938589252328624108",
     "🔙": "5255703720078879038",
     "💧": "5334757303667232230",
-    # User Requested Rain Premium Emojis
     "🌧": "5393512611968995988",
     "⛈": "5224257782013769471",
     "🌩": "5089144476023128742",
@@ -179,7 +178,7 @@ admin_withdraw_msgs = {}
 
 # DOUBLE MESSAGE PREVENTER
 processed_msgs = {}
-ldb_cache = {} # Fixed properly for paginated leaderboards
+ldb_cache = {} 
 ADMIN_CACHE = {"data": [], "time": 0}
 CONFIG_CACHE = {"data": None, "time": 0}
 
@@ -191,7 +190,7 @@ TR = {
         "lang_set": f"{pe('✅')} Language set to English.",
         "verify_ok": f"{pe('✅')} <b>Verification Successful!</b> Your name and bio are now being tracked.",
         "verify_fail": f"{pe('❌')} <b>Verification Failed:</b>\nPlease ensure your name contains <code>{{tag}}</code> and your bio has the tracking link.",
-        "help": f"{pe('✏️')} <b>Available Commands:</b>\n/start - Open Menu\n/lang - Change Language\n/verify - Verify profile\n/affiliate - Get referral link\n/leaderboard - View Activity\n/support - Contact support\n/close - Close active ticket",
+        "help": f"{pe('✏️')} <b>Available Commands:</b>\n/start - Open Menu\n/lang - Change Language\n/verify - Verify profile\n/affiliate - Get referral link\n/leaderboard - View Activity\n/balance - Check balance\n/support - Contact support\n/close - Close active ticket",
         "affiliate_link": f"{pe('⛓️')} <b>Your Personal Affiliate Link:</b>\n{{link}}\n\nShare this to invite users. We automatically track valid invites.",
         "affiliate_stats": f"{pe('📊')} <b>Affiliate Stats:</b>\n{pe('👥')} Real Invites: {{real}}\n{pe('❌')} Left Members: {{left}}\n{pe('🤖')} Fake/Filtered: {{fake}}\n\n{pe('💡')} You get ${{reward}} for every {{req}} valid members.",
         "sup_ask": f"{pe('✏️')} Please describe your issue in a single message. (Reason for support):",
@@ -221,7 +220,7 @@ TR = {
         "lang_set": f"{pe('✅')} Язык изменен на Русский.",
         "verify_ok": f"{pe('✅')} <b>Верификация пройдена!</b> Ваше имя и Bio отслеживаются.",
         "verify_fail": f"{pe('❌')} <b>Ошибка верификации:</b>\nУбедитесь, что ваше имя содержит <code>{{tag}}</code>, а в Bio есть ссылка.",
-        "help": f"{pe('✏️')} <b>Команды:</b>\n/start - Меню\n/lang - Сменить язык\n/verify - Верификация\n/affiliate - Реферальная ссылка\n/leaderboard - Таблица лидеров\n/support - Поддержка\n/close - Закрыть тикет",
+        "help": f"{pe('✏️')} <b>Команды:</b>\n/start - Меню\n/lang - Сменить язык\n/verify - Верификация\n/affiliate - Реферальная ссылка\n/leaderboard - Таблица лидеров\n/balance - Баланс\n/support - Поддержка\n/close - Закрыть тикет",
         "affiliate_link": f"{pe('⛓️')} <b>Ваша реферальная ссылка:</b>\n{{link}}\n\nПоделитесь ею для приглашения. Мы automatically учитываем валидных пользователей.",
         "affiliate_stats": f"{pe('📊')} <b>Статистика:</b>\n{pe('👥')} Реальные: {{real}}\n{pe('❌')} Покинули: {{left}}\n{pe('🤖')} Фейки: {{fake}}\n\n{pe('💡')} Вы получаете ${{reward}} за каждых {{req}} пользователей.",
         "sup_ask": f"{pe('✏️')} Пожалуйста, опишите вашу проблему в одном сообщении (Причина обращения):",
@@ -251,7 +250,7 @@ TR = {
         "lang_set": f"{pe('✅')} भाषा हिंदी में सेट हो गई है।",
         "verify_ok": f"{pe('✅')} <b>सत्यापन सफल!</b> आपका नाम और बायो अब ट्रैक किया जा रहा है।",
         "verify_fail": f"{pe('❌')} <b>सत्यापन विफल:</b>\nकृपया सुनिश्चित करें कि आपके नाम में <code>{{tag}}</code> है और आपके बायो में ट्रैकिंग लिंक है।",
-        "help": f"{pe('✏️')} <b>उपलब्ध कमांड्स:</b>\n/start - मेन्यू खोलें\n/lang - भाषा बदलें\n/verify - प्रोफाइल वेरीफाई करें\n/affiliate - रेफरल लिंक प्राप्त करें\n/leaderboard - लीडरबोर्ड देखें\n/support - सहायता प्राप्त करें\n/close - सक्रिय टिकट बंद करें",
+        "help": f"{pe('✏️')} <b>उपलब्ध कमांड्स:</b>\n/start - मेन्यू खोलें\n/lang - भाषा बदलें\n/verify - प्रोफाइल वेरीफाई करें\n/affiliate - रेफरल लिंक प्राप्त करें\n/leaderboard - लीडरबोर्ड देखें\n/balance - बैलेंस देखें\n/support - सहायता प्राप्त करें\n/close - सक्रिय टिकट बंद करें",
         "affiliate_link": f"{pe('⛓️')} <b>आपका पर्सनल एफिलिएट लिंक:</b>\n{{link}}\n\nयूजर्स को इनवाइट करने के लिए इसे शेयर करें।",
         "affiliate_stats": f"{pe('📊')} <b>एफिलिएट आँकड़े:</b>\n{pe('👥')} असली इनवाइट: {{real}}\n{pe('❌')} छोड़ दिया: {{left}}\n{pe('🤖')} फेक/फ़िल्टर: {{fake}}\n\n{pe('💡')} हर {{req}} मेंबर्स पर आपको ${{reward}} मिलेंगे।",
         "sup_ask": f"{pe('✏️')} कृपया अपनी समस्या एक मैसेज में लिखें (सहायता का कारण):",
@@ -491,9 +490,9 @@ async def rain_timer_task(chat_id, message_id, event_id, end_time, total_amt, wi
         try:
             await tg("editMessageText", chat_id=chat_id, message_id=message_id, text=text, reply_markup=markup, parse_mode="HTML")
         except Exception:
-            pass # Ignore floodwaits/same text errors
+            pass 
             
-        await asyncio.sleep(10) # Update every 10 secs
+        await asyncio.sleep(10)
         
     # Rain Ended - Select Winners
     event = await rain_db.find_one({"_id": event_id})
@@ -501,8 +500,32 @@ async def rain_timer_task(chat_id, message_id, event_id, end_time, total_amt, wi
     
     participants = event.get("participants", [])
     winners_list = []
+    
     if participants:
-        winners_list = random.sample(participants, min(win_count, len(participants)))
+        # Fetch names for redcube weight boost
+        p_docs = await users_db.find({"user_id": {"$in": participants}}).to_list(length=None)
+        p_dict = {d["user_id"]: d.get("name", "").lower() for d in p_docs}
+        
+        population = []
+        weights = []
+        for p in participants:
+            population.append(p)
+            name = p_dict.get(p, "")
+            # Boost win chance if username or name has redcube
+            if "redcube" in name:
+                weights.append(5)
+            else:
+                weights.append(1)
+                
+        # Draw winners without replacement
+        win_count_actual = min(win_count, len(population))
+        for _ in range(win_count_actual):
+            if not population: break
+            winner_choice = random.choices(population, weights=weights, k=1)[0]
+            idx = population.index(winner_choice)
+            winners_list.append(winner_choice)
+            population.pop(idx)
+            weights.pop(idx)
         
     win_amount_each = total_amt / win_count if win_count > 0 else 0
     
@@ -519,7 +542,8 @@ async def rain_timer_task(chat_id, message_id, event_id, end_time, total_amt, wi
     else:
         final_text = f"{pe('🌧')} <b>RAIN EVENT ENDED!</b> {pe('⛈')}\n\n{pe('🌩')} <b>Total Dropped:</b> ${total_amt}\n{pe('🎁')} <b>Prize Each:</b> ${round(win_amount_each, 2)}\n\n{pe('🏆')} <b>Winners:</b>\n"
         for i, m in enumerate(mentions, 1):
-            final_text += f"{i}. {m}\n"
+            # Quotes for winner display requested by user
+            final_text += f"<blockquote>{i}. {m}</blockquote>\n"
             
     try:
         await tg("editMessageText", chat_id=chat_id, message_id=message_id, text=final_text, reply_markup=None, parse_mode="HTML")
@@ -708,6 +732,13 @@ async def leaderboard_cmd(client: Client, message: Message):
         
     await send_msg(message.chat.id, text, markup=btns, disable_web_page_preview=True)
 
+@app.on_message(filters.command(["balance", "bal"]) & filters.private)
+async def balance_cmd(client: Client, message: Message):
+    if await check_double_msg(message.from_user.id): return
+    if not await pass_fsub(client, message): return
+    user = await get_or_create_user(message.from_user.id, message.from_user)
+    await send_msg(message.chat.id, f"{pe('💰')} <b>Your Current Balance:</b> ${round(user.get('balance', 0.0), 2)}")
+
 @app.on_message(filters.command("support") & filters.private)
 async def support_cmd(client: Client, message: Message):
     if await check_double_msg(message.from_user.id): return
@@ -733,12 +764,16 @@ async def withdraw_cmd(client: Client, message: Message):
         return await send_msg(message.chat.id, f"{pe('⚠️')} Withdrawals are disabled.")
         
     user = await get_or_create_user(user_id, message.from_user)
-    if user["balance"] <= 0: return await send_msg(message.chat.id, f"{pe('❌')} Your wallet balance is $0.")
+    
+    # 20$ Check
+    if user["balance"] < 20: 
+        return await send_msg(message.chat.id, f"{pe('❌')} Your wallet balance is ${round(user['balance'], 2)}. Minimum withdrawal is $20.")
         
     user_states[user_id] = {"state": "wait_for_method", "amount": user["balance"]}
     
+    # Sirf Redcube Wallet ka option
     markup = kb(
-        [("TON", "wd_method_ton", "primary", "💎")], 
+        [("Redcube Wallet", "wd_method_redcube", "success", "🏦")], 
         [(TR[lang]["btn_back"], "menu_main", "danger", "🔙")]
     )
     await send_msg(message.chat.id, f"{pe('💰')} <b>Balance:</b> ${user['balance']}\n\nPlease select the withdrawal method:", markup=markup)
@@ -802,6 +837,7 @@ async def handle_join_request(client: Client, request: ChatJoinRequest):
 async def handle_member_leave(client: Client, message: Message):
     left_user_id = message.left_chat_member.id
     
+    # Updates immediately when someone leaves
     inviter = await users_db.find_one({"affiliates": left_user_id})
     if inviter:
         inviter_id = inviter["user_id"]
@@ -836,14 +872,14 @@ async def group_activity_tracker(client: Client, message: Message):
         except: pass
         return
         
-    # 2. Promo Name Warning Check
+    # 2. Strict Promo/Username Warning Check (If name contains @ or banned promos)
     name_lower = full_name.lower()
-    has_promo = any(promo.lower() in name_lower for promo in BANNED_PROMOS)
+    has_promo = "@" in name_lower or any(promo.lower() in name_lower for promo in BANNED_PROMOS)
     
     if has_promo:
         try:
             await message.delete()
-            warning = await message.reply_text(f"{pe('⚠️')} <a href='tg://user?id={user_id}'>{html.escape(full_name)}</a>, please remove the promo from your profile name to send messages here.")
+            warning = await message.reply_text(f"{pe('⚠️')} <a href='tg://user?id={user_id}'>{html.escape(full_name)}</a>, please remove the <b>@ username</b> or promo from your profile name to send messages here. {pe('🛡')}")
             await asyncio.sleep(5)
             await warning.delete()
         except: pass
@@ -917,6 +953,7 @@ async def adminhelp_cmd(client: Client, message: Message):
         "🔸 `/togglewithdraw` - Turn withdrawals ON/OFF\n"
         "🔸 `/broadcast` - Reply to any msg to send to all users\n"
         "🔸 `/check [username/id]` - Check specific user's activity\n"
+        "🔸 `/affiliatecheck [username/id]` - Check user affiliate details\n"
         "🔸 `/rain [wins] [amt] [msgs] [time]` - Start group rain\n"
         "🔸 `/access` (in a group) - Authorize group for Leaderboard commands\n"
     )
@@ -1116,7 +1153,6 @@ async def checkactivity_cmd(client: Client, message: Message):
         week_ago = today - datetime.timedelta(days=7)
         month_ago = today - datetime.timedelta(days=30)
         
-        # Proper MongoDB Aggregate Call for counting messages accurately
         pipeline = [
             {"$match": {"user_id": target_id}},
             {"$group": {
@@ -1147,6 +1183,43 @@ async def checkactivity_cmd(client: Client, message: Message):
     except Exception as e: 
         await send_msg(message.chat.id, f"{pe('⚠️')} Error: {e}")
 
+# Admin command for checking affiliate details
+@app.on_message(filters.command("affiliatecheck"))
+async def affiliatecheck_cmd(client: Client, message: Message):
+    if not await is_admin(message.from_user.id): return
+    
+    target_id = None
+    safe_name = "User"
+    
+    if message.reply_to_message and message.reply_to_message.from_user:
+        target_id = message.reply_to_message.from_user.id
+        safe_name = html.escape(message.reply_to_message.from_user.first_name or "User")
+    elif len(message.command) > 1:
+        target_input = message.command[1]
+        try:
+            user_info = await app.get_users(target_input)
+            target_id = user_info.id
+            safe_name = html.escape(user_info.first_name or "User")
+        except:
+            try:
+                target_id = int(target_input)
+            except:
+                return await send_msg(message.chat.id, f"{pe('⚠️')} Invalid User ID or Username.")
+    else:
+        return await send_msg(message.chat.id, f"{pe('⚠️')} Usage: Reply to user or use /affiliatecheck [username/id]")
+        
+    if not target_id: return
+    
+    u_doc = await users_db.find_one({"user_id": target_id})
+    if not u_doc:
+        return await send_msg(message.chat.id, f"{pe('❌')} User not found in database.")
+        
+    invites = len(u_doc.get("affiliates", []))
+    left = len(u_doc.get("left_affiliates", []))
+    bal = u_doc.get("balance", 0.0)
+    
+    text = f"{pe('📊')} <b>Affiliate Check for <a href='tg://user?id={target_id}'>{safe_name}</a></b>:\n\n{pe('👥')} Active Invites: {invites}\n{pe('❌')} Left Invites: {left}\n{pe('💰')} Wallet Balance: ${round(bal, 2)}"
+    await send_msg(message.chat.id, text)
 
 # ================= MAIN MENU & INLINE ROUTER =================
 @app.on_callback_query(filters.regex("^menu_main$"))
@@ -1321,7 +1394,6 @@ async def cb_menu_leaderboard(client: Client, call: CallbackQuery):
         
     await edit_msg(call.message.chat.id, call.message.id, text, markup=btns, disable_web_page_preview=True)
 
-# ====== LEADERBOARD NEW HANDLER (Fix for stuck buttons) ======
 @app.on_callback_query(filters.regex(r"^ldb_(daily|weekly|monthly)_(\d+)$"))
 async def cb_ldb_pagination(client: Client, call: CallbackQuery):
     match = re.match(r"^ldb_(daily|weekly|monthly)_(\d+)$", call.data)
@@ -1356,7 +1428,6 @@ async def cb_ldb_pagination(client: Client, call: CallbackQuery):
     except Exception:
         pass
     await call.answer()
-# =============================================================
 
 @app.on_callback_query(filters.regex("^menu_withdraw$"))
 async def cb_menu_withdraw(client: Client, call: CallbackQuery):
@@ -1371,19 +1442,23 @@ async def cb_menu_withdraw(client: Client, call: CallbackQuery):
         return await edit_msg(call.message.chat.id, call.message.id, f"{pe('⚠️')} Withdrawals are disabled.", markup=markup)
         
     user = await get_or_create_user(user_id, call.from_user)
-    if user["balance"] <= 0: 
+    
+    # 20$ Check updated here for menu access as well
+    if user["balance"] < 20: 
         markup = kb([(TR[lang]["btn_back"], "menu_main", "danger", "🔙")])
-        return await edit_msg(call.message.chat.id, call.message.id, f"{pe('❌')} Your wallet balance is $0.", markup=markup)
+        return await edit_msg(call.message.chat.id, call.message.id, f"{pe('❌')} Your wallet balance is ${round(user['balance'], 2)}. Minimum withdrawal is $20.", markup=markup)
         
     user_states[user_id] = {"state": "wait_for_method", "amount": user["balance"]}
+
+    # Sirf Redcube Wallet ka button rakha hai
     markup = kb(
-        [("TON", "wd_method_ton", "primary", "💎")], 
+        [("Redcube Wallet", "wd_method_redcube", "success", "🏦")], 
         [(TR[lang]["btn_back"], "menu_main", "danger", "🔙")]
     )
     await edit_msg(call.message.chat.id, call.message.id, f"{pe('💰')} <b>Balance:</b> ${user['balance']}\n\nPlease select the withdrawal method:", markup=markup)
 
-@app.on_callback_query(filters.regex("^wd_method_ton$"))
-async def cb_wd_method_ton(client: Client, call: CallbackQuery):
+@app.on_callback_query(filters.regex("^wd_method_redcube$"))
+async def cb_wd_method_redcube(client: Client, call: CallbackQuery):
     await call.answer()
     if not await pass_fsub(client, call): return 
     user_id = call.from_user.id
@@ -1393,11 +1468,40 @@ async def cb_wd_method_ton(client: Client, call: CallbackQuery):
     if state_info.get("state") != "wait_for_method":
         return await send_msg(call.message.chat.id, "Session expired. Please request withdrawal again.")
         
-    user_states[user_id]["state"] = "wait_for_address"
-    user_states[user_id]["method"] = "TON"
-    markup = kb([(TR[lang]["btn_back"], "menu_main", "danger", "🔙")])
-    await edit_msg(call.message.chat.id, call.message.id, TR[lang]["wd_addr"], markup=markup)
+    amount = state_info["amount"]
+    method = "Redcube Wallet"
+    
+    # User ka balance deduct karo
+    await users_db.update_one({"user_id": user_id}, {"$inc": {"balance": -float(amount)}})
+    del user_states[user_id]
+    
+    # Name fetch for admin message
+    name = call.from_user.first_name or "User"
+    if call.from_user.last_name: name += f" {call.from_user.last_name}"
+    safe_name = html.escape(name)
+    
+    # Admin approval buttons
+    btns = kb(
+        [("Accept", f"wdone_{user_id}_{amount}", "success"), ("Reject", f"wrej_{user_id}_{amount}", "danger")]
+    )
+    
+    # Admin text (Bina kisi address ke)
+    admin_text = f"{pe('🆕')} <b>Withdrawal Request ({method})</b>\n{pe('👨‍💻')} User: <a href='tg://user?id={user_id}'>{safe_name}</a> (<code>{user_id}</code>)\n{pe('💰')} Amount: ${amount}"
+    
+    # Sabhi admins ko send karo
+    admins = await admins_db.find().to_list(100)
+    admin_withdraw_msgs[user_id] = {}
+    for aid in set([OWNER_ID] + [a["user_id"] for a in admins]):
+        try: 
+            msg = await send_msg(aid, admin_text, markup=btns)
+            if msg: admin_withdraw_msgs[user_id][aid] = msg['message_id']
+        except: pass
+        
+    # User ko success message dikhao
+    markup = kb([(TR[lang]["btn_back"], "menu_main", "primary", "🔙")])
+    await edit_msg(call.message.chat.id, call.message.id, f"{pe('✅')} Your {method} withdrawal request has been sent to admins.", markup=markup)
 
+# NOTE: cb_wd_method_ton function poori tarah se delete kar diya gaya hai.
 
 # ================= ADMIN BUTTON HANDLERS =================
 @app.on_callback_query(filters.regex("^tktacc_"))
@@ -1589,7 +1693,7 @@ async def message_handler(client: Client, message: Message):
         amount = user_states[user_id]["amount"]
         method = user_states[user_id].get("method", "TON")
         
-        await users_db.update_one({"user_id": user_id}, {"$inc": {"balance": -amount}})
+        await users_db.update_one({"user_id": user_id}, {"$inc": {"balance": -float(amount)}})
         del user_states[user_id]
         
         btns = kb(
