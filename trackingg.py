@@ -765,13 +765,11 @@ async def withdraw_cmd(client: Client, message: Message):
         
     user = await get_or_create_user(user_id, message.from_user)
     
-    # 20$ Check
     if user["balance"] < 20: 
         return await send_msg(message.chat.id, f"{pe('❌')} Your wallet balance is ${round(user['balance'], 2)}. Minimum withdrawal is $20.")
         
     user_states[user_id] = {"state": "wait_for_method", "amount": user["balance"]}
     
-    # Sirf Redcube Wallet ka option
     markup = kb(
         [("Redcube Wallet", "wd_method_redcube", "success", "🏦")], 
         [(TR[lang]["btn_back"], "menu_main", "danger", "🔙")]
@@ -804,7 +802,6 @@ async def close_cmd(client: Client, message: Message):
 async def handle_join_request(client: Client, request: ChatJoinRequest):
     user_id = request.from_user.id
     
-    # Fake Account Auto Reject Logic
     user = request.from_user
     if user.is_bot or getattr(user, 'is_fake', False) or getattr(user, 'is_scam', False) or getattr(user, 'is_restricted', False):
         try:
@@ -837,7 +834,6 @@ async def handle_join_request(client: Client, request: ChatJoinRequest):
 async def handle_member_leave(client: Client, message: Message):
     left_user_id = message.left_chat_member.id
     
-    # Updates immediately when someone leaves
     inviter = await users_db.find_one({"affiliates": left_user_id})
     if inviter:
         inviter_id = inviter["user_id"]
@@ -872,9 +868,10 @@ async def group_activity_tracker(client: Client, message: Message):
         except: pass
         return
         
-    # 2. Strict Promo/Username Warning Check (If name contains @ or banned promos)
+    # 2. Strict Promo/Username Warning Check (If name contains @ or banned promos, except @redcube)
     name_lower = full_name.lower()
-    has_promo = "@" in name_lower or any(promo.lower() in name_lower for promo in BANNED_PROMOS)
+    name_without_tag = name_lower.replace(REQUIRED_USERNAME_TAG.lower(), "")
+    has_promo = "@" in name_without_tag or any(promo.lower() in name_lower for promo in BANNED_PROMOS)
     
     if has_promo:
         try:
