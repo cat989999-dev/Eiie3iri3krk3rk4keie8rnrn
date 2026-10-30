@@ -14,7 +14,6 @@ import time
 import re
 from pyrogram import Client, filters, idle
 from pyrogram.types import Message, CallbackQuery, ChatJoinRequest, BotCommand
-from pyrogram.errors import UserNotParticipant
 from motor.motor_asyncio import AsyncIOMotorClient
 import aiohttp
 import dns.resolver
@@ -337,7 +336,7 @@ async def get_or_create_user(user_id, user_obj=None):
             "user_id": user_id, "balance": 0.0, "bio_link": None, 
             "verified": False, "affiliates": [], "fake_affiliates": [], "left_affiliates": [],
             "lang": "en", "won_draw": False, "name": name,
-            "ever_joined_group": False # <-- New flag added
+            "ever_joined_group": False # <-- Exploit fix flag
         }
         await users_db.insert_one(user)
     elif user_obj and (user.get("name") != name or user.get("name") == "User"):
@@ -416,30 +415,38 @@ async def generate_leaderboard_text(period, page):
     ldb_cache[cache_key] = {"text": text, "max_pages": max_pages, "time": now}
     return text, max_pages
 
-# ================= SAFE FORCE SUBSCRIBE LOGIC =================
+# ================= SAFE FORCE SUBSCRIBE LOGIC (100% BULLETPROOF) =================
 async def is_user_subscribed(client: Client, user_id: int) -> bool:
     if await is_admin(user_id):
         return True
     
-    is_in_channel = False
-    is_in_group = False
-    
-    # 100% Accurate API calls for channel and group (bypasses pyrogram caches/errors)
-    try:
-        res_channel = await tg("getChatMember", chat_id=FSUB_CHANNEL, user_id=user_id)
-        if res_channel and res_channel.get("status") in ["member", "administrator", "creator", "restricted"]:
-            is_in_channel = True
-    except Exception:
-        is_in_channel = False 
+    async def check_chat(chat_identifier):
+        # Method 1: Try with Pyrogram (Normal Check)
+        try:
+            m = await client.get_chat_member(chat_identifier, user_id)
+            status = str(m.status).lower()
+            if any(x in status for x in ["member", "admin", "creator", "owner", "restricted"]):
+                return True
+        except Exception:
+            pass
         
-    try:
-        res_group = await tg("getChatMember", chat_id=TRACK_GROUP_ID, user_id=user_id)
-        if res_group and res_group.get("status") in ["member", "administrator", "creator", "restricted"]:
-            is_in_group = True
-    except Exception:
-        is_in_group = False 
+        # Method 2: Try with Raw HTTP API (Cache bypass - Fail-safe)
+        try:
+            res = await tg("getChatMember", chat_id=chat_identifier, user_id=user_id)
+            status = res.get("status", "").lower()
+            if status in ["member", "administrator", "creator", "restricted"]:
+                return True
+        except Exception:
+            pass
+            
+        return False
+
+    in_channel = await check_chat(FSUB_CHANNEL)
+    if not in_channel: 
+        return False
         
-    return is_in_channel and is_in_group
+    in_group = await check_chat(TRACK_GROUP_ID)
+    return in_group
 
 def get_fsub_keyboard():
     channel_url = f"https://t.me/{FSUB_CHANNEL.replace('@', '')}"
@@ -544,7 +551,6 @@ async def rain_timer_task(chat_id, message_id, event_id, end_time, total_amt, wi
     else:
         final_text = f"{pe('🌧')} <b>RAIN EVENT ENDED!</b> {pe('⛈')}\n\n{pe('🌩')} <b>Total Dropped:</b> ${total_amt}\n{pe('🎁')} <b>Prize Each:</b> ${round(win_amount_each, 2)}\n\n{pe('🏆')} <b>Winners:</b>\n"
         for i, m in enumerate(mentions, 1):
-            # Quotes for winner display requested by user
             final_text += f"<blockquote>{i}. {m}</blockquote>\n"
             
     try:
@@ -802,45 +808,51 @@ async def close_cmd(client: Client, message: Message):
     except: pass
         
 # ================= BACKGROUND TRACKERS =================
-@app.on_chat_join_request(filters.chat(TRACK_GROUP_ID))
+@app.on_chat_join_request()
 async def handle_join_request(client: Client, request: ChatJoinRequest):
     user_id = request.from_user.id
+    chat_id = request.chat.id
     
     # Fake Account Auto Reject Logic
     user = request.from_user
     if user.is_bot or getattr(user, 'is_fake', False) or getattr(user, 'is_scam', False) or getattr(user, 'is_restricted', False):
         try:
-            await client.decline_chat_join_request(TRACK_GROUP_ID, user_id)
+            await client.decline_chat_join_request(chat_id, user_id)
         except: pass
         return
         
-    await client.approve_chat_join_request(TRACK_GROUP_ID, user_id)
+    # Always Auto-approve for any chat bot administers (Fixes stuck pending state in channels/groups)
+    try:
+        await client.approve_chat_join_request(chat_id, user_id)
+    except Exception: pass
     
-    joining_user = await get_or_create_user(user_id, request.from_user)
+    # Affiliate tracking only happens in the main tracking group
+    if chat_id == TRACK_GROUP_ID:
+        joining_user = await get_or_create_user(user_id, request.from_user)
 
-    # Check if they have EVER joined before (Global exploit fix)
-    if not joining_user.get("ever_joined_group", False):
-        # Mark them as joined so they can never be counted again
-        await users_db.update_one({"user_id": user_id}, {"$set": {"ever_joined_group": True}})
+        # Check if they have EVER joined before (Global exploit fix)
+        if not joining_user.get("ever_joined_group", False):
+            # Mark them as joined so they can never be counted again
+            await users_db.update_one({"user_id": user_id}, {"$set": {"ever_joined_group": True}})
 
-        if request.invite_link and request.invite_link.name and request.invite_link.name.startswith("Affiliate_"):
-            inviter_id = int(request.invite_link.name.split("_")[1])
-            inviter_data = await get_or_create_user(inviter_id)
-            
-            if user_id not in inviter_data.get("affiliates", []) and user_id not in inviter_data.get("left_affiliates", []):
-                await users_db.update_one({"user_id": inviter_id}, {"$addToSet": {"affiliates": user_id}})
+            if request.invite_link and request.invite_link.name and request.invite_link.name.startswith("Affiliate_"):
+                inviter_id = int(request.invite_link.name.split("_")[1])
+                inviter_data = await get_or_create_user(inviter_id)
                 
-                new_count = len(inviter_data.get("affiliates", [])) + 1
-                conf = await get_config()
-                if new_count % conf["affiliate_req"] == 0:
-                    reward = conf["affiliate_reward"]
-                    await users_db.update_one({"user_id": inviter_id}, {"$inc": {"balance": reward}})
-                    lang = await get_lang(inviter_id)
-                    msg = f"{pe('🎉')} <b>Congratulations!</b> You reached {conf['affiliate_req']} members. ${reward} added!"
-                    if lang == "ru": msg = f"{pe('🎉')} <b>Поздравляем!</b> Вы пригласили {conf['affiliate_req']} участников. Вам начислено ${reward}!"
-                    if lang == "hi": msg = f"{pe('🎉')} <b>बधाई हो!</b> आपने {conf['affiliate_req']} मेंबर्स जोड़ लिए हैं। आपके वॉलेट में ${reward} जुड़ गए हैं!"
-                    try: await send_msg(inviter_id, msg)
-                    except: pass
+                if user_id not in inviter_data.get("affiliates", []) and user_id not in inviter_data.get("left_affiliates", []):
+                    await users_db.update_one({"user_id": inviter_id}, {"$addToSet": {"affiliates": user_id}})
+                    
+                    new_count = len(inviter_data.get("affiliates", [])) + 1
+                    conf = await get_config()
+                    if new_count % conf["affiliate_req"] == 0:
+                        reward = conf["affiliate_reward"]
+                        await users_db.update_one({"user_id": inviter_id}, {"$inc": {"balance": reward}})
+                        lang = await get_lang(inviter_id)
+                        msg = f"{pe('🎉')} <b>Congratulations!</b> You reached {conf['affiliate_req']} members. ${reward} added!"
+                        if lang == "ru": msg = f"{pe('🎉')} <b>Поздравляем!</b> Вы пригласили {conf['affiliate_req']} участников. Вам начислено ${reward}!"
+                        if lang == "hi": msg = f"{pe('🎉')} <b>बधाई हो!</b> आपने {conf['affiliate_req']} मेंबर्स जोड़ लिए हैं। आपके वॉलेट में ${reward} जुड़ गए हैं!"
+                        try: await send_msg(inviter_id, msg)
+                        except: pass
 
 @app.on_message(filters.left_chat_member & filters.chat(TRACK_GROUP_ID))
 async def handle_member_leave(client: Client, message: Message):
