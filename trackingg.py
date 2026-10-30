@@ -13,6 +13,7 @@ import html
 import time
 import re
 from pyrogram import Client, filters, idle
+from pyrogram.enums import ChatMemberStatus
 from pyrogram.types import Message, CallbackQuery, ChatJoinRequest, BotCommand
 from pyrogram.errors import UserNotParticipant
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -35,7 +36,7 @@ TRACK_GROUP_ID = -1003946482336
 REQUIRED_USERNAME_TAG = "@redcube"
 FSUB_CHANNEL = "@redcube_en"  
 GROUP_INVITE_LINK = "https://t.me/+rdKCTKOlxUE1Mjc8"
-BANNED_PROMOS = ["@dices", "@raika", "@booplay", "@Axoms", "@giftsggapp", "@royaldices"]
+BANNED_PROMOS = ["@dices", "@raika", "@booplay", "@Axoms", "@giftsggapp", "@royaldices", "casino", "bet", "1xbet"]
 
 # ================= HTTP SESSION (For Fast API Calls) =================
 HTTP_SESSION: aiohttp.ClientSession | None = None
@@ -796,17 +797,25 @@ async def close_cmd(client: Client, message: Message):
         t_lang = await get_lang(target_id)
         await send_msg(target_id, TR[t_lang]["tkt_closed"])
     except: pass
-        
+
 # ================= BACKGROUND TRACKERS =================
 @app.on_chat_join_request(filters.chat(TRACK_GROUP_ID))
 async def handle_join_request(client: Client, request: ChatJoinRequest):
     user_id = request.from_user.id
     
     user = request.from_user
-    if user.is_bot or getattr(user, 'is_fake', False) or getattr(user, 'is_scam', False) or getattr(user, 'is_restricted', False):
+    full_name = f"{user.first_name or ''} {user.last_name or ''}".lower()
+    name_without_tag = full_name.replace(REQUIRED_USERNAME_TAG.lower(), "")
+    has_promo = "@" in name_without_tag or any(promo.lower() in full_name for promo in BANNED_PROMOS)
+    
+    if user.is_bot or getattr(user, 'is_fake', False) or getattr(user, 'is_scam', False) or getattr(user, 'is_restricted', False) or getattr(user, 'is_deleted', False) or has_promo:
         try:
             await client.decline_chat_join_request(TRACK_GROUP_ID, user_id)
         except: pass
+        
+        if request.invite_link and request.invite_link.name and request.invite_link.name.startswith("Affiliate_"):
+            inviter_id = int(request.invite_link.name.split("_")[1])
+            await users_db.update_one({"user_id": inviter_id}, {"$addToSet": {"fake_affiliates": user_id}})
         return
         
     await client.approve_chat_join_request(TRACK_GROUP_ID, user_id)
@@ -830,21 +839,24 @@ async def handle_join_request(client: Client, request: ChatJoinRequest):
                 try: await send_msg(inviter_id, msg)
                 except: pass
 
-@app.on_message(filters.left_chat_member & filters.chat(TRACK_GROUP_ID))
-async def handle_member_leave(client: Client, message: Message):
-    left_user_id = message.left_chat_member.id
+@app.on_chat_member_updated(filters.chat(TRACK_GROUP_ID))
+async def handle_member_update(client: Client, update):
+    old_status = update.old_chat_member.status if update.old_chat_member else None
+    new_status = update.new_chat_member.status if update.new_chat_member else None
     
-    inviter = await users_db.find_one({"affiliates": left_user_id})
-    if inviter:
-        inviter_id = inviter["user_id"]
-        await users_db.update_one(
-            {"user_id": inviter_id}, 
-            {
-                "$pull": {"affiliates": left_user_id},
-                "$addToSet": {"left_affiliates": left_user_id},
-                "$inc": {"balance": -0.03} 
-            }
-        )
+    if new_status in [ChatMemberStatus.LEFT, ChatMemberStatus.BANNED]:
+        left_user_id = update.new_chat_member.user.id
+        inviter = await users_db.find_one({"affiliates": left_user_id})
+        if inviter:
+            inviter_id = inviter["user_id"]
+            await users_db.update_one(
+                {"user_id": inviter_id}, 
+                {
+                    "$pull": {"affiliates": left_user_id},
+                    "$addToSet": {"left_affiliates": left_user_id},
+                    "$inc": {"balance": -0.03} 
+                }
+            )
 
 def contains_russian(text: str) -> bool:
     if not text: return False
@@ -868,7 +880,7 @@ async def group_activity_tracker(client: Client, message: Message):
         except: pass
         return
         
-    # 2. Strict Promo/Username Warning Check (If name contains @ or banned promos, except @redcube)
+    # 2. Strict Promo/Username Warning Check
     name_lower = full_name.lower()
     name_without_tag = name_lower.replace(REQUIRED_USERNAME_TAG.lower(), "")
     has_promo = "@" in name_without_tag or any(promo.lower() in name_lower for promo in BANNED_PROMOS)
