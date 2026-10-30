@@ -12,8 +12,7 @@ import random
 import html
 import time
 import re
-from pyrogram import Client, filters, idle
-from pyrogram.enums import ChatMemberStatus
+from pyrogram import Client, filters, idle, enums
 from pyrogram.types import Message, CallbackQuery, ChatJoinRequest, BotCommand
 from pyrogram.errors import UserNotParticipant
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -36,7 +35,7 @@ TRACK_GROUP_ID = -1003946482336
 REQUIRED_USERNAME_TAG = "@redcube"
 FSUB_CHANNEL = "@redcube_en"  
 GROUP_INVITE_LINK = "https://t.me/+rdKCTKOlxUE1Mjc8"
-BANNED_PROMOS = ["@dices", "@raika", "@booplay", "@Axoms", "@giftsggapp", "@royaldices", "casino", "bet", "1xbet"]
+BANNED_PROMOS = ["@dices", "@raika", "@booplay", "@Axoms", "@giftsggapp", "@royaldices"]
 
 # ================= HTTP SESSION (For Fast API Calls) =================
 HTTP_SESSION: aiohttp.ClientSession | None = None
@@ -337,7 +336,7 @@ async def get_or_create_user(user_id, user_obj=None):
         user = {
             "user_id": user_id, "balance": 0.0, "bio_link": None, 
             "verified": False, "affiliates": [], "fake_affiliates": [], "left_affiliates": [],
-            "lang": "en", "won_draw": False, "name": name
+            "lang": "en", "won_draw": False, "name": name, "ever_joined_group": False
         }
         await users_db.insert_one(user)
     elif user_obj and (user.get("name") != name or user.get("name") == "User"):
@@ -416,49 +415,49 @@ async def generate_leaderboard_text(period, page):
     ldb_cache[cache_key] = {"text": text, "max_pages": max_pages, "time": now}
     return text, max_pages
 
-# ================= DYNAMIC FORCE SUBSCRIBE LOGIC =================
-async def check_subscription_status(client: Client, user_id: int):
+# ================= SAFE FORCE SUBSCRIBE LOGIC =================
+async def is_user_subscribed(client: Client, user_id: int) -> bool:
     if await is_admin(user_id):
-        return True, True
+        return True
     
     is_in_channel = False
     is_in_group = False
     
     try:
         member = await client.get_chat_member(FSUB_CHANNEL, user_id)
-        if member.status in [ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.MEMBER, ChatMemberStatus.RESTRICTED]:
+        status_str = str(member.status).lower()
+        if "left" not in status_str and "kicked" not in status_str and "banned" not in status_str and "restricted" not in status_str:
             is_in_channel = True
     except Exception:
-        is_in_channel = False
+        is_in_channel = False 
         
     try:
         member = await client.get_chat_member(TRACK_GROUP_ID, user_id)
-        if member.status in [ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.MEMBER, ChatMemberStatus.RESTRICTED]:
+        status_str = str(member.status).lower()
+        if "left" not in status_str and "kicked" not in status_str and "banned" not in status_str and "restricted" not in status_str:
             is_in_group = True
     except Exception:
-        is_in_group = False
+        is_in_group = False 
         
-    return is_in_channel, is_in_group
+    return is_in_channel and is_in_group
+
+def get_fsub_keyboard():
+    channel_url = f"https://t.me/{FSUB_CHANNEL.replace('@', '')}"
+    return {
+        "inline_keyboard": [
+            [btn("Join Channel", url=channel_url, style="primary", icon="📢")],
+            [btn("Join Group", url=GROUP_INVITE_LINK, style="primary", icon="👥")],
+            [btn("Check", data="check_fsub", style="success", icon="✅")]
+        ]
+    }
 
 async def pass_fsub(client: Client, message_or_call):
     user_id = message_or_call.from_user.id
-    is_in_channel, is_in_group = await check_subscription_status(client, user_id)
-
-    if is_in_channel and is_in_group:
+    if await is_user_subscribed(client, user_id):
         return True
     
-    text = f"{pe('⚠️')} <b>Please join our official channels to use this bot!</b>\n\nClick the buttons below to join, then click <b>Check {pe('✅')}</b>."
-    
-    kb_list = []
-    channel_url = f"https://t.me/{FSUB_CHANNEL.replace('@', '')}"
-    
-    if not is_in_channel:
-        kb_list.append([btn("Join Channel", url=channel_url, style="primary", icon="📢")])
-    if not is_in_group:
-        kb_list.append([btn("Join Group", url=GROUP_INVITE_LINK, style="primary", icon="👥")])
-        
-    kb_list.append([btn("Check", data="check_fsub", style="success", icon="✅")])
-    markup = {"inline_keyboard": kb_list}
+    text = f"{pe('⚠️')} <b>Please join our official channel and group to use this bot!</b>\n\nClick the buttons below to join, then click <b>Check {pe('✅')}</b>."
+    markup = get_fsub_keyboard()
     
     if isinstance(message_or_call, Message):
         await send_msg(message_or_call.chat.id, text, markup=markup)
@@ -768,11 +767,13 @@ async def withdraw_cmd(client: Client, message: Message):
         
     user = await get_or_create_user(user_id, message.from_user)
     
+    # 20$ Check
     if user["balance"] < 20: 
         return await send_msg(message.chat.id, f"{pe('❌')} Your wallet balance is ${round(user['balance'], 2)}. Minimum withdrawal is $20.")
         
     user_states[user_id] = {"state": "wait_for_method", "amount": user["balance"]}
     
+    # Sirf Redcube Wallet ka option
     markup = kb(
         [("Redcube Wallet", "wd_method_redcube", "success", "🏦")], 
         [(TR[lang]["btn_back"], "menu_main", "danger", "🔙")]
@@ -799,71 +800,65 @@ async def close_cmd(client: Client, message: Message):
         t_lang = await get_lang(target_id)
         await send_msg(target_id, TR[t_lang]["tkt_closed"])
     except: pass
-
+        
 # ================= BACKGROUND TRACKERS =================
 @app.on_chat_join_request(filters.chat(TRACK_GROUP_ID))
 async def handle_join_request(client: Client, request: ChatJoinRequest):
     user_id = request.from_user.id
     
+    # Fake Account Auto Reject Logic
     user = request.from_user
-    full_name = f"{user.first_name or ''} {user.last_name or ''}".lower()
-    name_without_tag = full_name.replace(REQUIRED_USERNAME_TAG.lower(), "")
-    has_promo = "@" in name_without_tag or any(promo.lower() in full_name for promo in BANNED_PROMOS)
-    
-    if user.is_bot or getattr(user, 'is_fake', False) or getattr(user, 'is_scam', False) or getattr(user, 'is_restricted', False) or getattr(user, 'is_deleted', False) or has_promo:
+    if user.is_bot or getattr(user, 'is_fake', False) or getattr(user, 'is_scam', False) or getattr(user, 'is_restricted', False):
         try:
             await client.decline_chat_join_request(TRACK_GROUP_ID, user_id)
         except: pass
-        
-        if request.invite_link and request.invite_link.name and request.invite_link.name.startswith("Affiliate_"):
-            inviter_id = int(request.invite_link.name.split("_")[1])
-            await users_db.update_one({"user_id": inviter_id}, {"$addToSet": {"fake_affiliates": user_id}})
         return
         
     await client.approve_chat_join_request(TRACK_GROUP_ID, user_id)
     
-    if request.invite_link and request.invite_link.name and request.invite_link.name.startswith("Affiliate_"):
-        inviter_id = int(request.invite_link.name.split("_")[1])
-        inviter_data = await get_or_create_user(inviter_id)
-        
-        # Check globally if the user has EVER been an affiliate or left affiliate of anyone
-        existing_affiliate = await users_db.find_one({
-            "$or": [{"affiliates": user_id}, {"left_affiliates": user_id}]
-        })
-        
-        if not existing_affiliate:
-            await users_db.update_one({"user_id": inviter_id}, {"$addToSet": {"affiliates": user_id}})
-            
-            new_count = len(inviter_data.get("affiliates", [])) + 1
-            conf = await get_config()
-            if new_count % conf["affiliate_req"] == 0:
-                reward = conf["affiliate_reward"]
-                await users_db.update_one({"user_id": inviter_id}, {"$inc": {"balance": reward}})
-                lang = await get_lang(inviter_id)
-                msg = f"{pe('🎉')} <b>Congratulations!</b> You reached {conf['affiliate_req']} members. ${reward} added!"
-                if lang == "ru": msg = f"{pe('🎉')} <b>Поздравляем!</b> Вы пригласили {conf['affiliate_req']} участников. Вам начислено ${reward}!"
-                if lang == "hi": msg = f"{pe('🎉')} <b>बधाई हो!</b> आपने {conf['affiliate_req']} मेंबर्स जोड़ लिए हैं। आपके वॉलेट में ${reward} जुड़ गए हैं!"
-                try: await send_msg(inviter_id, msg)
-                except: pass
+    joining_user = await get_or_create_user(user_id, request.from_user)
 
-@app.on_chat_member_updated(filters.chat(TRACK_GROUP_ID))
-async def handle_member_update(client: Client, update):
-    old_status = update.old_chat_member.status if update.old_chat_member else None
-    new_status = update.new_chat_member.status if update.new_chat_member else None
+    # Check if they have EVER joined before (Global exploit fix)
+    if not joining_user.get("ever_joined_group", False):
+        # Mark them as joined so they can never be counted again
+        await users_db.update_one({"user_id": user_id}, {"$set": {"ever_joined_group": True}})
+
+        # Proceed with affiliate logic only if this is their first time ever joining
+        if request.invite_link and request.invite_link.name and request.invite_link.name.startswith("Affiliate_"):
+            inviter_id = int(request.invite_link.name.split("_")[1])
+            inviter_data = await get_or_create_user(inviter_id)
+            
+            if user_id not in inviter_data.get("affiliates", []) and user_id not in inviter_data.get("left_affiliates", []):
+                await users_db.update_one({"user_id": inviter_id}, {"$addToSet": {"affiliates": user_id}})
+                
+                new_count = len(inviter_data.get("affiliates", [])) + 1
+                conf = await get_config()
+                if new_count % conf["affiliate_req"] == 0:
+                    reward = conf["affiliate_reward"]
+                    await users_db.update_one({"user_id": inviter_id}, {"$inc": {"balance": reward}})
+                    lang = await get_lang(inviter_id)
+                    msg = f"{pe('🎉')} <b>Congratulations!</b> You reached {conf['affiliate_req']} members. ${reward} added!"
+                    if lang == "ru": msg = f"{pe('🎉')} <b>Поздравляем!</b> Вы пригласили {conf['affiliate_req']} участников. Вам начислено ${reward}!"
+                    if lang == "hi": msg = f"{pe('🎉')} <b>बधाई हो!</b> आपने {conf['affiliate_req']} मेंबर्स जोड़ लिए हैं। आपके वॉलेट में ${reward} जुड़ गए हैं!"
+                    try: await send_msg(inviter_id, msg)
+                    except: pass
+
+@app.on_message(filters.left_chat_member & filters.chat(TRACK_GROUP_ID))
+async def handle_member_leave(client: Client, message: Message):
+    left_user_id = message.left_chat_member.id
     
-    if new_status in [ChatMemberStatus.LEFT, ChatMemberStatus.BANNED]:
-        left_user_id = update.new_chat_member.user.id
-        inviter = await users_db.find_one({"affiliates": left_user_id})
-        if inviter:
-            inviter_id = inviter["user_id"]
-            await users_db.update_one(
-                {"user_id": inviter_id}, 
-                {
-                    "$pull": {"affiliates": left_user_id},
-                    "$addToSet": {"left_affiliates": left_user_id},
-                    "$inc": {"balance": -0.03} 
-                }
-            )
+    # Updates immediately when someone leaves
+    inviter = await users_db.find_one({"affiliates": left_user_id})
+    if inviter:
+        inviter_id = inviter["user_id"]
+        await users_db.update_one(
+            {"user_id": inviter_id}, 
+            {
+                "$pull": {"affiliates": left_user_id},
+                "$addToSet": {"left_affiliates": left_user_id},
+                "$inc": {"balance": -0.03} 
+            }
+        )
 
 def contains_russian(text: str) -> bool:
     if not text: return False
@@ -887,10 +882,9 @@ async def group_activity_tracker(client: Client, message: Message):
         except: pass
         return
         
-    # 2. Strict Promo/Username Warning Check
+    # 2. Strict Promo/Username Warning Check (If name contains @ or banned promos)
     name_lower = full_name.lower()
-    name_without_tag = name_lower.replace(REQUIRED_USERNAME_TAG.lower(), "")
-    has_promo = "@" in name_without_tag or any(promo.lower() in name_lower for promo in BANNED_PROMOS)
+    has_promo = "@" in name_lower or any(promo.lower() in name_lower for promo in BANNED_PROMOS)
     
     if has_promo:
         try:
@@ -1459,12 +1453,14 @@ async def cb_menu_withdraw(client: Client, call: CallbackQuery):
         
     user = await get_or_create_user(user_id, call.from_user)
     
+    # 20$ Check updated here for menu access as well
     if user["balance"] < 20: 
         markup = kb([(TR[lang]["btn_back"], "menu_main", "danger", "🔙")])
         return await edit_msg(call.message.chat.id, call.message.id, f"{pe('❌')} Your wallet balance is ${round(user['balance'], 2)}. Minimum withdrawal is $20.", markup=markup)
         
     user_states[user_id] = {"state": "wait_for_method", "amount": user["balance"]}
 
+    # Sirf Redcube Wallet ka button rakha hai
     markup = kb(
         [("Redcube Wallet", "wd_method_redcube", "success", "🏦")], 
         [(TR[lang]["btn_back"], "menu_main", "danger", "🔙")]
@@ -1485,19 +1481,24 @@ async def cb_wd_method_redcube(client: Client, call: CallbackQuery):
     amount = state_info["amount"]
     method = "Redcube Wallet"
     
+    # User ka balance deduct karo
     await users_db.update_one({"user_id": user_id}, {"$inc": {"balance": -float(amount)}})
     del user_states[user_id]
     
+    # Name fetch for admin message
     name = call.from_user.first_name or "User"
     if call.from_user.last_name: name += f" {call.from_user.last_name}"
     safe_name = html.escape(name)
     
+    # Admin approval buttons
     btns = kb(
         [("Accept", f"wdone_{user_id}_{amount}", "success"), ("Reject", f"wrej_{user_id}_{amount}", "danger")]
     )
     
+    # Admin text (Bina kisi address ke)
     admin_text = f"{pe('🆕')} <b>Withdrawal Request ({method})</b>\n{pe('👨‍💻')} User: <a href='tg://user?id={user_id}'>{safe_name}</a> (<code>{user_id}</code>)\n{pe('💰')} Amount: ${amount}"
     
+    # Sabhi admins ko send karo
     admins = await admins_db.find().to_list(100)
     admin_withdraw_msgs[user_id] = {}
     for aid in set([OWNER_ID] + [a["user_id"] for a in admins]):
@@ -1506,6 +1507,7 @@ async def cb_wd_method_redcube(client: Client, call: CallbackQuery):
             if msg: admin_withdraw_msgs[user_id][aid] = msg['message_id']
         except: pass
         
+    # User ko success message dikhao
     markup = kb([(TR[lang]["btn_back"], "menu_main", "primary", "🔙")])
     await edit_msg(call.message.chat.id, call.message.id, f"{pe('✅')} Your {method} withdrawal request has been sent to admins.", markup=markup)
 
@@ -1644,8 +1646,7 @@ async def cb_rain_join(client: Client, call: CallbackQuery):
 # ================= FSUB CHECK BUTTON HANDLER =================
 @app.on_callback_query(filters.regex("^check_fsub$"))
 async def cb_check_fsub(client: Client, call: CallbackQuery):
-    is_in_channel, is_in_group = await check_subscription_status(client, call.from_user.id)
-    if is_in_channel and is_in_group:
+    if await is_user_subscribed(client, call.from_user.id):
         await call.answer("Joined successfully! ✅", show_alert=True)
         user = await get_or_create_user(call.from_user.id, call.from_user)
         lang = await get_lang(call.from_user.id)
@@ -1658,7 +1659,7 @@ async def cb_check_fsub(client: Client, call: CallbackQuery):
         welcome_body = TR[lang]["welcome"].format(tag=REQUIRED_USERNAME_TAG, link=user.get('bio_link', 'No Link Generated'))
         await send_msg(call.message.chat.id, welcome_body, markup=get_main_menu(lang), disable_web_page_preview=True)
     else:
-        await call.answer("You haven't joined all required chats yet! ⚠️", show_alert=True)
+        await call.answer("You haven't joined yet! Please join the channel first. ⚠️", show_alert=True)
 
 @app.on_message(filters.private & filters.text & ~filters.regex(r"^/"))
 async def message_handler(client: Client, message: Message):
