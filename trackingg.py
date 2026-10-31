@@ -192,6 +192,7 @@ TR = {
         "help": f"{pe('✏️')} <b>Available Commands:</b>\n/start - Open Menu\n/lang - Change Language\n/verify - Verify profile\n/affiliate - Get referral link\n/leaderboard - View Activity\n/balance - Check balance\n/support - Contact support\n/close - Close active ticket",
         "affiliate_link": f"{pe('⛓️')} <b>Your Personal Affiliate Link:</b>\n{{link}}\n\nShare this to invite users. We automatically track valid invites.",
         "affiliate_stats": f"{pe('📊')} <b>Affiliate Stats:</b>\n{pe('👥')} Real Invites: {{real}}\n{pe('❌')} Left Members: {{left}}\n{pe('🤖')} Fake/Filtered: {{fake}}\n\n{pe('💡')} You get ${{reward}} for every {{req}} valid members.",
+        "affiliate_disabled": f"{pe('⚠️')} <b>Affiliate system is currently disabled by admins.</b>",
         "sup_ask": f"{pe('✏️')} Please describe your issue in a single message. (Reason for support):",
         "sup_sent": f"{pe('✅')} Your request has been sent to the admins. Ticket Number: <b>{{tkt}}</b>\nPlease wait for an admin to accept it.",
         "sup_pending": f"{pe('⚠️')} You already have a pending or active support ticket. Please wait until it is resolved.",
@@ -222,6 +223,7 @@ TR = {
         "help": f"{pe('✏️')} <b>Команды:</b>\n/start - Меню\n/lang - Сменить язык\n/verify - Верификация\n/affiliate - Реферальная ссылка\n/leaderboard - Таблица лидеров\n/balance - Баланс\n/support - Поддержка\n/close - Закрыть тикет",
         "affiliate_link": f"{pe('⛓️')} <b>Ваша реферальная ссылка:</b>\n{{link}}\n\nПоделитесь ею для приглашения. Мы automatically учитываем валидных пользователей.",
         "affiliate_stats": f"{pe('📊')} <b>Статистика:</b>\n{pe('👥')} Реальные: {{real}}\n{pe('❌')} Покинули: {{left}}\n{pe('🤖')} Фейки: {{fake}}\n\n{pe('💡')} Вы получаете ${{reward}} за каждых {{req}} пользователей.",
+        "affiliate_disabled": f"{pe('⚠️')} <b>Партнерская система в настоящее время отключена администраторами.</b>",
         "sup_ask": f"{pe('✏️')} Пожалуйста, опишите вашу проблему в одном сообщении (Причина обращения):",
         "sup_sent": f"{pe('✅')} Ваш запрос отправлен. Номер тикета: <b>{{tkt}}</b>\nПожалуйста, подождите ответа.",
         "sup_pending": f"{pe('⚠️')} У вас already есть активный тикет. Дождитесь его закрытия.",
@@ -252,6 +254,7 @@ TR = {
         "help": f"{pe('✏️')} <b>उपलब्ध कमांड्स:</b>\n/start - मेन्यू खोलें\n/lang - भाषा बदलें\n/verify - प्रोफाइल वेरीफाई करें\n/affiliate - रेफरल लिंक प्राप्त करें\n/leaderboard - लीडरबोर्ड देखें\n/balance - बैलेंस देखें\n/support - सहायता प्राप्त करें\n/close - सक्रिय टिकट बंद करें",
         "affiliate_link": f"{pe('⛓️')} <b>आपका पर्सनल एफिलिएट लिंक:</b>\n{{link}}\n\nयूजर्स को इनवाइट करने के लिए इसे शेयर करें।",
         "affiliate_stats": f"{pe('📊')} <b>एफिलिएट आँकड़े:</b>\n{pe('👥')} असली इनवाइट: {{real}}\n{pe('❌')} छोड़ दिया: {{left}}\n{pe('🤖')} फेक/फ़िल्टर: {{fake}}\n\n{pe('💡')} हर {{req}} मेंबर्स पर आपको ${{reward}} मिलेंगे।",
+        "affiliate_disabled": f"{pe('⚠️')} <b>एफिलिएट सिस्टम वर्तमान में एडमिन द्वारा बंद कर दिया गया है।</b>",
         "sup_ask": f"{pe('✏️')} कृपया अपनी समस्या एक मैसेज में लिखें (सहायता का कारण):",
         "sup_sent": f"{pe('✅')} आपका अनुरोध एडमिन को भेज दिया गया है। टिकट नंबर: <b>{{tkt}}</b>\nकृपया प्रतीक्षा करें।",
         "sup_pending": f"{pe('⚠️')} आपके पास पहले से ही एक सक्रिय टिकट है। कृपया इसके समाधान की प्रतीक्षा करें।",
@@ -316,7 +319,10 @@ async def get_config():
             "affiliate_req": 100,
             "draw_winners_count": 10,
             "draw_amount": 2.0,
-            "draw_enabled": True
+            "draw_enabled": True,
+            "withdrawal_enabled": True,
+            "affiliate_enabled": True,
+            "min_withdrawal": 20.0
         }
         await config_db.insert_one({"_id": "settings", **conf})
         
@@ -669,15 +675,26 @@ async def affiliate_cmd(client: Client, message: Message):
     if not await pass_fsub(client, message): return 
     user = await get_or_create_user(message.from_user.id, message.from_user)
     lang = await get_lang(message.from_user.id)
-    try:
-        invite = await app.create_chat_invite_link(TRACK_GROUP_ID, name=f"Affiliate_{message.from_user.id}", creates_join_request=True)
-        markup = kb(
-            [("Affiliate Status", "menu_aff_stats", "primary", "📊")],
-            [(TR[lang]["btn_back"], "menu_main", "danger", "🔙")]
-        )
-        await send_msg(message.chat.id, TR[lang]["affiliate_link"].format(link=invite.invite_link), markup=markup)
-    except:
-        await send_msg(message.chat.id, f"{pe('❌')} Error creating link. Ensure bot is admin in the tracking group.")
+    conf = await get_config()
+
+    if not conf.get("affiliate_enabled", True):
+        return await send_msg(message.chat.id, TR[lang]["affiliate_disabled"])
+
+    # Generating link unconditionally due to revoke compatibility
+    invite_link = user.get("affiliate_link")
+    if not invite_link:
+        try:
+            invite = await app.create_chat_invite_link(TRACK_GROUP_ID, name=f"Affiliate_{message.from_user.id}", creates_join_request=True)
+            invite_link = invite.invite_link
+            await users_db.update_one({"user_id": message.from_user.id}, {"$set": {"affiliate_link": invite_link}})
+        except:
+            return await send_msg(message.chat.id, f"{pe('❌')} Error creating link. Ensure bot is admin in the tracking group.")
+
+    markup = kb(
+        [("Affiliate Status", "menu_aff_stats", "primary", "📊")],
+        [(TR[lang]["btn_back"], "menu_main", "danger", "🔙")]
+    )
+    await send_msg(message.chat.id, TR[lang]["affiliate_link"].format(link=invite_link), markup=markup)
 
 @app.on_message(filters.command("draw") & filters.private)
 async def show_draw_cmd(client: Client, message: Message):
@@ -772,10 +789,11 @@ async def withdraw_cmd(client: Client, message: Message):
         return await send_msg(message.chat.id, f"{pe('⚠️')} Withdrawals are disabled.")
         
     user = await get_or_create_user(user_id, message.from_user)
+    min_wd = conf.get("min_withdrawal", 20.0)
     
-    # 20$ Check
-    if user["balance"] < 20: 
-        return await send_msg(message.chat.id, f"{pe('❌')} Your wallet balance is ${round(user['balance'], 2)}. Minimum withdrawal is $20.")
+    # Min Withdrawal Check updated with dynamic config value
+    if user["balance"] < min_wd: 
+        return await send_msg(message.chat.id, f"{pe('❌')} Your wallet balance is ${round(user['balance'], 2)}. Minimum withdrawal is ${min_wd}.")
         
     user_states[user_id] = {"state": "wait_for_method", "amount": user["balance"]}
     
@@ -821,7 +839,14 @@ async def handle_join_request(client: Client, request: ChatJoinRequest):
         except: pass
         return
         
-    # Always Auto-approve for any chat bot administers (Fixes stuck pending state in channels/groups)
+    conf = await get_config()
+    
+    # Stop auto-approval for group if affiliate is disabled, EXCEPT for admins
+    if chat_id == TRACK_GROUP_ID and not conf.get("affiliate_enabled", True):
+        if not await is_admin(user_id):
+            return  # Leave request pending
+
+    # Auto-approve for channels or allowed group requests
     try:
         await client.approve_chat_join_request(chat_id, user_id)
     except Exception: pass
@@ -836,6 +861,10 @@ async def handle_join_request(client: Client, request: ChatJoinRequest):
             await users_db.update_one({"user_id": user_id}, {"$set": {"ever_joined_group": True}})
 
             if request.invite_link and request.invite_link.name and request.invite_link.name.startswith("Affiliate_"):
+                # Double check config in case it changed mid-flight
+                if not conf.get("affiliate_enabled", True):
+                    return # Skip affiliate processing if system is toggled off
+
                 inviter_id = int(request.invite_link.name.split("_")[1])
                 inviter_data = await get_or_create_user(inviter_id)
                 
@@ -843,7 +872,7 @@ async def handle_join_request(client: Client, request: ChatJoinRequest):
                     await users_db.update_one({"user_id": inviter_id}, {"$addToSet": {"affiliates": user_id}})
                     
                     new_count = len(inviter_data.get("affiliates", [])) + 1
-                    conf = await get_config()
+                    
                     if new_count % conf["affiliate_req"] == 0:
                         reward = conf["affiliate_reward"]
                         await users_db.update_one({"user_id": inviter_id}, {"$inc": {"balance": reward}})
@@ -858,7 +887,7 @@ async def handle_join_request(client: Client, request: ChatJoinRequest):
 async def handle_member_leave(client: Client, message: Message):
     left_user_id = message.left_chat_member.id
     
-    # Updates immediately when someone leaves
+    # Updates immediately when someone leaves (Works even if affiliate is toggled off)
     inviter = await users_db.find_one({"affiliates": left_user_id})
     if inviter:
         inviter_id = inviter["user_id"]
@@ -976,6 +1005,9 @@ async def adminhelp_cmd(client: Client, message: Message):
         "🔸 `/adminlist` - View all admins\n"
         "🔸 `/setprice [members] [amount]` - Update affiliate referral price\n"
         "🔸 `/togglewithdraw` - Turn withdrawals ON/OFF\n"
+        "🔸 `/toggleaffiliate` - Turn affiliate system ON/OFF\n"
+        "🔸 `/revokeall` - Clear existing affiliate links for all users\n"
+        "🔸 `/withdrawupdate [amount]` - Set minimum withdrawal limit\n"
         "🔸 `/broadcast` - Reply to any msg to send to all users\n"
         "🔸 `/check [username/id]` - Check specific user's activity\n"
         "🔸 `/affiliatecheck [username/id]` - Check user affiliate details\n"
@@ -983,6 +1015,45 @@ async def adminhelp_cmd(client: Client, message: Message):
         "🔸 `/access` (in a group) - Authorize group for Leaderboard commands\n"
     )
     await send_msg(message.chat.id, text)
+
+@app.on_message(filters.command("revokeall"))
+async def revokeall_cmd(client: Client, message: Message):
+    if not await is_admin(message.from_user.id): return
+    
+    # Remove 'affiliate_link' field from all users in the DB
+    result = await users_db.update_many(
+        {"affiliate_link": {"$exists": True}},
+        {"$unset": {"affiliate_link": ""}}
+    )
+    
+    await send_msg(message.chat.id, f"{pe('✅')} <b>All affiliate links revoked!</b>\n{result.modified_count} users will get a fresh link next time they use /affiliate.")
+
+@app.on_message(filters.command("toggleaffiliate"))
+async def toggleaffiliate_cmd(client: Client, message: Message):
+    if not await is_admin(message.from_user.id): return
+    conf = await get_config()
+    new_state = not conf.get("affiliate_enabled", True)
+    await config_db.update_one({"_id": "settings"}, {"$set": {"affiliate_enabled": new_state}}, upsert=True)
+    
+    global CONFIG_CACHE
+    CONFIG_CACHE["time"] = 0 
+    
+    await send_msg(message.chat.id, f"{pe('✏️')} Affiliate System is now <b>{'ENABLED' if new_state else 'DISABLED'}</b>.")
+
+@app.on_message(filters.command("withdrawupdate"))
+async def withdrawupdate_cmd(client: Client, message: Message):
+    if not await is_admin(message.from_user.id): return
+    try:
+        parts = message.text.split()
+        new_min = float(parts[1])
+        await config_db.update_one({"_id": "settings"}, {"$set": {"min_withdrawal": new_min}}, upsert=True)
+        
+        global CONFIG_CACHE
+        CONFIG_CACHE["time"] = 0
+        
+        await send_msg(message.chat.id, f"{pe('✅')} Minimum withdrawal limit successfully updated to <b>${new_min}</b>.")
+    except:
+        await send_msg(message.chat.id, "Usage: /withdrawupdate [amount]\nExample: `/withdrawupdate 10`")
 
 @app.on_message(filters.command("toggledraw"))
 async def toggledraw_cmd(client: Client, message: Message):
@@ -1288,6 +1359,11 @@ async def cb_menu_affiliate(client: Client, call: CallbackQuery):
     user_id = call.from_user.id
     user = await get_or_create_user(user_id, call.from_user)
     lang = await get_lang(user_id)
+    conf = await get_config()
+
+    if not conf.get("affiliate_enabled", True):
+        markup = kb([(TR[lang]["btn_back"], "menu_main", "danger", "🔙")])
+        return await edit_msg(call.message.chat.id, call.message.id, TR[lang]["affiliate_disabled"], markup=markup)
     
     invite_link = user.get("affiliate_link")
     if not invite_link:
@@ -1467,11 +1543,12 @@ async def cb_menu_withdraw(client: Client, call: CallbackQuery):
         return await edit_msg(call.message.chat.id, call.message.id, f"{pe('⚠️')} Withdrawals are disabled.", markup=markup)
         
     user = await get_or_create_user(user_id, call.from_user)
+    min_wd = conf.get("min_withdrawal", 20.0)
     
-    # 20$ Check updated here for menu access as well
-    if user["balance"] < 20: 
+    # Min Withdrawal Check updated with dynamic config value
+    if user["balance"] < min_wd: 
         markup = kb([(TR[lang]["btn_back"], "menu_main", "danger", "🔙")])
-        return await edit_msg(call.message.chat.id, call.message.id, f"{pe('❌')} Your wallet balance is ${round(user['balance'], 2)}. Minimum withdrawal is $20.", markup=markup)
+        return await edit_msg(call.message.chat.id, call.message.id, f"{pe('❌')} Your wallet balance is ${round(user['balance'], 2)}. Minimum withdrawal is ${min_wd}.", markup=markup)
         
     user_states[user_id] = {"state": "wait_for_method", "amount": user["balance"]}
 
