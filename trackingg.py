@@ -893,9 +893,13 @@ async def group_activity_tracker(client: Client, message: Message):
         except: pass
         return
         
-    # 2. Strict Promo/Username Warning Check (If name contains @ or banned promos)
+    # 2. Strict Promo/Username Warning Check (Ignore REQUIRED_USERNAME_TAG)
     name_lower = full_name.lower()
-    has_promo = "@" in name_lower or any(promo.lower() in name_lower for promo in BANNED_PROMOS)
+    
+    # Remove the required tag from the check string so it doesn't trigger the "@" detection
+    check_name = name_lower.replace(REQUIRED_USERNAME_TAG.lower(), "")
+    
+    has_promo = "@" in check_name or any(promo.lower() in check_name for promo in BANNED_PROMOS)
     
     if has_promo:
         try:
