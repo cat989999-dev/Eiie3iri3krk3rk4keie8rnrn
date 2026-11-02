@@ -118,13 +118,15 @@ def kb(*rows) -> dict:
 async def send_msg(chat_id: int, text: str, markup=None, parse_mode="HTML", reply_to: int = None, disable_web_page_preview=True):
     try:
         return await tg("sendMessage", chat_id=chat_id, text=text, reply_markup=markup, parse_mode=parse_mode, reply_to_message_id=reply_to, disable_web_page_preview=disable_web_page_preview)
-    except Exception as e:
+    except Exception:
         pass
 
 async def edit_msg(chat_id: int, message_id: int, text: str, markup=None, parse_mode="HTML", disable_web_page_preview=True):
     try:
         return await tg("editMessageText", chat_id=chat_id, message_id=message_id, text=text, reply_markup=markup, parse_mode=parse_mode, disable_web_page_preview=disable_web_page_preview)
-    except Exception:
+    except Exception as e:
+        if "not modified" in str(e).lower():
+            return None # Ignore silent errors when clicking the same active button
         return await send_msg(chat_id, text, markup=markup, parse_mode=parse_mode, disable_web_page_preview=disable_web_page_preview)
 
 
@@ -686,7 +688,7 @@ async def affiliate_cmd(client: Client, message: Message):
 @app.on_message(filters.command(["rank", "myrank"]))
 async def rank_cmd(client: Client, message: Message):
     if await check_double_msg(message.from_user.id): return
-    if message.chat.type.name != "PRIVATE":
+    if message.chat.id < 0: # Check if in Group
         if not await is_group_authorized(message.chat.id):
             return
     else:
@@ -695,16 +697,25 @@ async def rank_cmd(client: Client, message: Message):
     user_id = message.from_user.id
     today = str(datetime.date.today())
 
+    # Build Match Query
+    match_query = {"date": today}
+    title_ext = ""
+    if message.chat.id < 0:
+        match_query["group_id"] = message.chat.id
+        title_ext = " (GROUP)"
+    else:
+        title_ext = " (GLOBAL)"
+
     # Get user's today messages
     user_act = await activity_db.aggregate([
-        {"$match": {"user_id": user_id, "date": today}},
+        {"$match": {"user_id": user_id, **match_query}},
         {"$group": {"_id": None, "total": {"$sum": "$message_count"}}}
     ]).to_list(1)
     user_msgs = user_act[0]["total"] if user_act else 0
 
     # Get user rank for today
     higher_users = await activity_db.aggregate([
-        {"$match": {"date": today}},
+        {"$match": match_query},
         {"$group": {"_id": "$user_id", "total": {"$sum": "$message_count"}}},
         {"$match": {"total": {"$gt": user_msgs}}},
         {"$count": "count"}
@@ -715,12 +726,11 @@ async def rank_cmd(client: Client, message: Message):
     name = message.from_user.first_name or "User"
     safe_name = html.escape(name)
     
-    text = f"{pe('🏆')} <b>Rank Info for {safe_name}</b>\n\n"
+    text = f"{pe('🏆')} <b>Rank Info for {safe_name}{title_ext}</b>\n\n"
     text += f"{pe('📊')} <b>Daily Rank:</b> #{rank}\n"
     text += f"{pe('💬')} <b>Messages Today:</b> {user_msgs}"
     
     await send_msg(message.chat.id, text)
-
 
 @app.on_message(filters.command("draw") & filters.private)
 async def show_draw_cmd(client: Client, message: Message):
@@ -755,11 +765,11 @@ async def leaderboard_cmd(client: Client, message: Message):
     if await check_double_msg(message.from_user.id): return
     
     group_id = None
-    if message.chat.type.name != "PRIVATE":
+    if message.chat.id < 0: # IN GROUP
         if not await is_group_authorized(message.chat.id):
             return
         group_id = message.chat.id
-    else:
+    else: # IN PRIVATE
         if not await pass_fsub(client, message): return 
         
     cmd = message.command[0].lower()
@@ -773,19 +783,21 @@ async def leaderboard_cmd(client: Client, message: Message):
     w_style = "success" if period == "weekly" else "primary"
     m_style = "success" if period == "monthly" else "primary"
     
-    # Inline buttons will track if this was pulled in a group or private
     gid_str = str(group_id) if group_id else "global"
     
-    if message.chat.type.name == "PRIVATE":
-        btns = kb(
-            [(tr["btn_daily"], f"ldb_daily_0_{gid_str}", d_style, "📅"), (tr["btn_weekly"], f"ldb_weekly_0_{gid_str}", w_style, "📅"), (tr["btn_monthly"], f"ldb_monthly_0_{gid_str}", m_style, "📅")],
-            [(tr["btn_back"], "menu_main", "danger", "🔙")]
-        )
-    else:
-        btns = kb(
-            [(tr["btn_daily"], f"ldb_daily_0_{gid_str}", d_style, "📅"), (tr["btn_weekly"], f"ldb_weekly_0_{gid_str}", w_style, "📅"), (tr["btn_monthly"], f"ldb_monthly_0_{gid_str}", m_style, "📅")]
-        )
+    btn_rows = [
+        [(tr["btn_daily"], f"ldb_daily_0_{gid_str}", d_style, "📅"), 
+         (tr["btn_weekly"], f"ldb_weekly_0_{gid_str}", w_style, "📅"), 
+         (tr["btn_monthly"], f"ldb_monthly_0_{gid_str}", m_style, "📅")]
+    ]
+    
+    if max_pages > 0:
+        btn_rows.append([("Next ➡️", f"ldb_{period}_1_{gid_str}", "primary", "➡️")])
         
+    if message.chat.id > 0: # IF PRIVATE
+        btn_rows.append([(tr["btn_back"], "menu_main", "danger", "🔙")])
+        
+    btns = kb(*btn_rows)
     await send_msg(message.chat.id, text, markup=btns, disable_web_page_preview=True)
 
 @app.on_message(filters.command(["balance", "bal"]) & filters.private)
@@ -1111,7 +1123,7 @@ async def warnreset_cmd(client: Client, message: Message):
     await users_db.update_one({"user_id": target_id}, {"$set": {"warnings": 0}})
     
     # Try to unrestrict them if command is used in group
-    if message.chat.type.name != "PRIVATE":
+    if message.chat.id < 0:
         try:
             await client.restrict_chat_member(message.chat.id, target_id, ChatPermissions(
                 can_send_messages=True,
@@ -1581,7 +1593,7 @@ async def cb_menu_leaderboard(client: Client, call: CallbackQuery):
     await call.answer()
     
     group_id = None
-    if call.message.chat.type.name == "PRIVATE":
+    if call.message.chat.id > 0: # IF PRIVATE
         if not await pass_fsub(client, call): return 
     else:
         if not await is_group_authorized(call.message.chat.id): return
@@ -1591,19 +1603,21 @@ async def cb_menu_leaderboard(client: Client, call: CallbackQuery):
     tr = TR.get(lang, TR["en"])
     
     text, max_pages = await generate_leaderboard_text("weekly", 0, group_id=group_id)
-    
     gid_str = str(group_id) if group_id else "global"
     
-    if call.message.chat.type.name == "PRIVATE":
-        btns = kb(
-            [(tr["btn_daily"], f"ldb_daily_0_{gid_str}", "primary", "📅"), (tr["btn_weekly"], f"ldb_weekly_0_{gid_str}", "success", "📅"), (tr["btn_monthly"], f"ldb_monthly_0_{gid_str}", "primary", "📅")],
-            [(tr["btn_back"], "menu_main", "danger", "🔙")]
-        )
-    else:
-        btns = kb(
-            [(tr["btn_daily"], f"ldb_daily_0_{gid_str}", "primary", "📅"), (tr["btn_weekly"], f"ldb_weekly_0_{gid_str}", "success", "📅"), (tr["btn_monthly"], f"ldb_monthly_0_{gid_str}", "primary", "📅")]
-        )
+    btn_rows = [
+        [(tr["btn_daily"], f"ldb_daily_0_{gid_str}", "primary", "📅"), 
+         (tr["btn_weekly"], f"ldb_weekly_0_{gid_str}", "success", "📅"), 
+         (tr["btn_monthly"], f"ldb_monthly_0_{gid_str}", "primary", "📅")]
+    ]
+    
+    if max_pages > 0:
+        btn_rows.append([("Next ➡️", f"ldb_weekly_1_{gid_str}", "primary", "➡️")])
         
+    if call.message.chat.id > 0: # IF PRIVATE
+        btn_rows.append([(tr["btn_back"], "menu_main", "danger", "🔙")])
+        
+    btns = kb(*btn_rows)
     await edit_msg(call.message.chat.id, call.message.id, text, markup=btns, disable_web_page_preview=True)
 
 @app.on_callback_query(filters.regex(r"^ldb_(daily|weekly|monthly)_(\d+)_(.+)$"))
@@ -1621,18 +1635,25 @@ async def cb_ldb_pagination(client: Client, call: CallbackQuery):
     
     text, max_pages = await generate_leaderboard_text(period, page, group_id=group_id)
     
-    is_private = call.message.chat.type.name == "PRIVATE"
+    is_private = call.message.chat.id > 0
     d_style = "success" if period == "daily" else "primary"
     w_style = "success" if period == "weekly" else "primary"
     m_style = "success" if period == "monthly" else "primary"
     
-    row1 = [
-        (tr["btn_daily"], f"ldb_daily_0_{gid_str}", d_style, "📅"),
-        (tr["btn_weekly"], f"ldb_weekly_0_{gid_str}", w_style, "📅"),
-        (tr["btn_monthly"], f"ldb_monthly_0_{gid_str}", m_style, "📅")
+    btn_rows = [
+        [(tr["btn_daily"], f"ldb_daily_0_{gid_str}", d_style, "📅"),
+         (tr["btn_weekly"], f"ldb_weekly_0_{gid_str}", w_style, "📅"),
+         (tr["btn_monthly"], f"ldb_monthly_0_{gid_str}", m_style, "📅")]
     ]
     
-    btn_rows = [row1]
+    nav_row = []
+    if page > 0:
+        nav_row.append(("⬅️ Prev", f"ldb_{period}_{page-1}_{gid_str}", "primary", "🔙"))
+    if page < max_pages:
+        nav_row.append(("Next ➡️", f"ldb_{period}_{page+1}_{gid_str}", "primary", "➡️"))
+    if nav_row:
+        btn_rows.append(nav_row)
+        
     if is_private:
         btn_rows.append([(tr["btn_back"], "menu_main", "danger", "🔙")])
         
