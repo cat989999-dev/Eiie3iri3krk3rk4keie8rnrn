@@ -13,7 +13,8 @@ import html
 import time
 import re
 from pyrogram import Client, filters, idle
-from pyrogram.types import Message, CallbackQuery, ChatJoinRequest, BotCommand
+from pyrogram.types import Message, CallbackQuery, ChatJoinRequest, BotCommand, ChatPermissions
+from pyrogram.enums import ParseMode
 from motor.motor_asyncio import AsyncIOMotorClient
 import aiohttp
 import dns.resolver
@@ -33,7 +34,7 @@ OWNER_ID = 7691071175
 TRACK_GROUP_ID = -1003946482336  
 REQUIRED_USERNAME_TAG = "@redcube"
 FSUB_CHANNEL = "@redcube_en"  
-GROUP_INVITE_LINK = "https://t.me/+rdKCTKOlxUE1Mjc8"
+GROUP_INVITE_LINK = "https://t.me/+ZSN1qIB95T45YmY8"
 BANNED_PROMOS = ["@dices", "@raika", "@booplay", "@Axoms", "@giftsggapp", "@royaldices"]
 
 # ================= HTTP SESSION (For Fast API Calls) =================
@@ -71,47 +72,20 @@ async def tg(method: str, retries: int = 2, **params):
 
 # ================= PREMIUM EMOJIS DATA =================
 PREMIUM_EMOJIS = {
-    "✅": "5123248930124989216",
-    "❌": "5893197207493939355",
-    "⚠️": "5420323339723881652",
-    "💰": "5893473283696759404",
-    "⛓️": "6021344879689341042",
-    "📊": "5895444149699612825",
-    "👥": "6021690418398239007",
-    "🤖": "5931415565955503486",
-    "💡": "6023897907034330805",
-    "🎟": "6021617983774791539",
-    "👨‍💻": "5444965061749644170",
-    "🔐": "6019568309417023812",
-    "🎉": "6023579259115674297",
-    "⏱": "6034973034257848185",
-    "🎁": "6023826881160157558",
-    "🏆": "6021644067111180663",
-    "📅": "6023880246128810031",
-    "🛡": "6019328362479097179",
-    "👑": "6021428854889913572",
-    "📈": "5938539885907415367",
-    "✏️": "5879841310902324730",
-    "🏦": "5332455502917949981",
-    "📍": "6023989024765516223",
-    "🆕": "5886306834410640699",
-    "👋": "5247133031235329609",
-    "🌐": "6019205852831947754",
-    "➡️": "5807462045288766810",
-    "🇬🇧": "5395560546865013953",
-    "🇷🇺": "5267224089382116952",
-    "🇮🇳": "6129782715035163979",
-    "💎": "5298988357538328017",
-    "🏠": "5258503720928288433",
-    "📢": "5938589252328624108",
-    "🔙": "5255703720078879038",
-    "💧": "5334757303667232230",
-    "🌧": "5393512611968995988",
-    "⛈": "5224257782013769471",
-    "🌩": "5089144476023128742",
-    "🌨": "5839380464116175529",
-    "🌦": "5258362837411045098",
-    "☔": "5348289410955754971"
+    "✅": "5123248930124989216", "❌": "5893197207493939355", "⚠️": "5420323339723881652",
+    "💰": "5893473283696759404", "⛓️": "6021344879689341042", "📊": "5895444149699612825",
+    "👥": "6021690418398239007", "🤖": "5931415565955503486", "💡": "6023897907034330805",
+    "🎟": "6021617983774791539", "👨‍💻": "5444965061749644170", "🔐": "6019568309417023812",
+    "🎉": "6023579259115674297", "⏱": "6034973034257848185", "🎁": "6023826881160157558",
+    "🏆": "6021644067111180663", "📅": "6023880246128810031", "🛡": "6019328362479097179",
+    "👑": "6021428854889913572", "📈": "5938539885907415367", "✏️": "5879841310902324730",
+    "🏦": "5332455502917949981", "📍": "6023989024765516223", "🆕": "5886306834410640699",
+    "👋": "5247133031235329609", "🌐": "6019205852831947754", "➡️": "5807462045288766810",
+    "🇬🇧": "5395560546865013953", "🇷🇺": "5267224089382116952", "🇮🇳": "6129782715035163979",
+    "💎": "5298988357538328017", "🏠": "5258503720928288433", "📢": "5938589252328624108",
+    "🔙": "5255703720078879038", "💧": "5334757303667232230", "🌧": "5393512611968995988",
+    "⛈": "5224257782013769471", "🌩": "5089144476023128742", "🌨": "5839380464116175529",
+    "🌦": "5258362837411045098", "☔": "5348289410955754971"
 }
 
 def pe(emoji_char: str) -> str:
@@ -175,8 +149,9 @@ user_langs = {}
 admin_ticket_msgs = {}
 admin_withdraw_msgs = {} 
 
-# DOUBLE MESSAGE PREVENTER
+# DOUBLE MESSAGE PREVENTER & SPAM TRACKER
 processed_msgs = {}
+spam_tracker = {}
 ldb_cache = {} 
 ADMIN_CACHE = {"data": [], "time": 0}
 CONFIG_CACHE = {"data": None, "time": 0}
@@ -189,7 +164,7 @@ TR = {
         "lang_set": f"{pe('✅')} Language set to English.",
         "verify_ok": f"{pe('✅')} <b>Verification Successful!</b> Your name and bio are now being tracked.",
         "verify_fail": f"{pe('❌')} <b>Verification Failed:</b>\nPlease ensure your name contains <code>{{tag}}</code> and your bio has the tracking link.",
-        "help": f"{pe('✏️')} <b>Available Commands:</b>\n/start - Open Menu\n/lang - Change Language\n/verify - Verify profile\n/affiliate - Get referral link\n/leaderboard - View Activity\n/balance - Check balance\n/support - Contact support\n/close - Close active ticket",
+        "help": f"{pe('✏️')} <b>Available Commands:</b>\n/start - Open Menu\n/lang - Change Language\n/verify - Verify profile\n/affiliate - Get referral link\n/leaderboard - View Activity\n/rank - View your daily rank\n/balance - Check balance\n/support - Contact support\n/close - Close active ticket",
         "affiliate_link": f"{pe('⛓️')} <b>Your Personal Affiliate Link:</b>\n{{link}}\n\nShare this to invite users. We automatically track valid invites.",
         "affiliate_stats": f"{pe('📊')} <b>Affiliate Stats:</b>\n{pe('👥')} Real Invites: {{real}}\n{pe('❌')} Left Members: {{left}}\n{pe('🤖')} Fake/Filtered: {{fake}}\n\n{pe('💡')} You get ${{reward}} for every {{req}} valid members.",
         "affiliate_disabled": f"{pe('⚠️')} <b>Affiliate system is currently disabled by admins.</b>",
@@ -220,7 +195,7 @@ TR = {
         "lang_set": f"{pe('✅')} Язык изменен на Русский.",
         "verify_ok": f"{pe('✅')} <b>Верификация пройдена!</b> Ваше имя и Bio отслеживаются.",
         "verify_fail": f"{pe('❌')} <b>Ошибка верификации:</b>\nУбедитесь, что ваше имя содержит <code>{{tag}}</code>, а в Bio есть ссылка.",
-        "help": f"{pe('✏️')} <b>Команды:</b>\n/start - Меню\n/lang - Сменить язык\n/verify - Верификация\n/affiliate - Реферальная ссылка\n/leaderboard - Таблица лидеров\n/balance - Баланс\n/support - Поддержка\n/close - Закрыть тикет",
+        "help": f"{pe('✏️')} <b>Команды:</b>\n/start - Меню\n/lang - Сменить язык\n/verify - Верификация\n/affiliate - Реферальная ссылка\n/leaderboard - Таблица лидеров\n/rank - Узнать свой ранг\n/balance - Баланс\n/support - Поддержка\n/close - Закрыть тикет",
         "affiliate_link": f"{pe('⛓️')} <b>Ваша реферальная ссылка:</b>\n{{link}}\n\nПоделитесь ею для приглашения. Мы automatically учитываем валидных пользователей.",
         "affiliate_stats": f"{pe('📊')} <b>Статистика:</b>\n{pe('👥')} Реальные: {{real}}\n{pe('❌')} Покинули: {{left}}\n{pe('🤖')} Фейки: {{fake}}\n\n{pe('💡')} Вы получаете ${{reward}} за каждых {{req}} пользователей.",
         "affiliate_disabled": f"{pe('⚠️')} <b>Партнерская система в настоящее время отключена администраторами.</b>",
@@ -251,7 +226,7 @@ TR = {
         "lang_set": f"{pe('✅')} भाषा हिंदी में सेट हो गई है।",
         "verify_ok": f"{pe('✅')} <b>सत्यापन सफल!</b> आपका नाम और बायो अब ट्रैक किया जा रहा है।",
         "verify_fail": f"{pe('❌')} <b>सत्यापन विफल:</b>\nकृपया सुनिश्चित करें कि आपके नाम में <code>{{tag}}</code> है और आपके बायो में ट्रैकिंग लिंक है।",
-        "help": f"{pe('✏️')} <b>उपलब्ध कमांड्स:</b>\n/start - मेन्यू खोलें\n/lang - भाषा बदलें\n/verify - प्रोफाइल वेरीफाई करें\n/affiliate - रेफरल लिंक प्राप्त करें\n/leaderboard - लीडरबोर्ड देखें\n/balance - बैलेंस देखें\n/support - सहायता प्राप्त करें\n/close - सक्रिय टिकट बंद करें",
+        "help": f"{pe('✏️')} <b>उपलब्ध कमांड्स:</b>\n/start - मेन्यू खोलें\n/lang - भाषा बदलें\n/verify - प्रोफाइल वेरीफाई करें\n/affiliate - रेफरल लिंक प्राप्त करें\n/leaderboard - लीडरबोर्ड देखें\n/rank - अपनी दैनिक रैंक देखें\n/balance - बैलेंस देखें\n/support - सहायता प्राप्त करें\n/close - सक्रिय टिकट बंद करें",
         "affiliate_link": f"{pe('⛓️')} <b>आपका पर्सनल एफिलिएट लिंक:</b>\n{{link}}\n\nयूजर्स को इनवाइट करने के लिए इसे शेयर करें।",
         "affiliate_stats": f"{pe('📊')} <b>एफिलिएट आँकड़े:</b>\n{pe('👥')} असली इनवाइट: {{real}}\n{pe('❌')} छोड़ दिया: {{left}}\n{pe('🤖')} फेक/फ़िल्टर: {{fake}}\n\n{pe('💡')} हर {{req}} मेंबर्स पर आपको ${{reward}} मिलेंगे।",
         "affiliate_disabled": f"{pe('⚠️')} <b>एफिलिएट सिस्टम वर्तमान में एडमिन द्वारा बंद कर दिया गया है।</b>",
@@ -342,7 +317,7 @@ async def get_or_create_user(user_id, user_obj=None):
             "user_id": user_id, "balance": 0.0, "bio_link": None, 
             "verified": False, "affiliates": [], "fake_affiliates": [], "left_affiliates": [],
             "lang": "en", "won_draw": False, "name": name,
-            "ever_joined_group": False # <-- Exploit fix flag
+            "ever_joined_group": False, "warnings": 0
         }
         await users_db.insert_one(user)
     elif user_obj and (user.get("name") != name or user.get("name") == "User"):
@@ -421,13 +396,12 @@ async def generate_leaderboard_text(period, page):
     ldb_cache[cache_key] = {"text": text, "max_pages": max_pages, "time": now}
     return text, max_pages
 
-# ================= SAFE FORCE SUBSCRIBE LOGIC (100% BULLETPROOF) =================
+# ================= SAFE FORCE SUBSCRIBE LOGIC =================
 async def is_user_subscribed(client: Client, user_id: int) -> bool:
     if await is_admin(user_id):
         return True
     
     async def check_chat(chat_identifier):
-        # Method 1: Try with Pyrogram (Normal Check)
         try:
             m = await client.get_chat_member(chat_identifier, user_id)
             status = str(m.status).lower()
@@ -436,7 +410,6 @@ async def is_user_subscribed(client: Client, user_id: int) -> bool:
         except Exception:
             pass
         
-        # Method 2: Try with Raw HTTP API (Cache bypass - Fail-safe)
         try:
             res = await tg("getChatMember", chat_id=chat_identifier, user_id=user_id)
             status = res.get("status", "").lower()
@@ -499,7 +472,7 @@ async def rain_timer_task(chat_id, message_id, event_id, end_time, total_amt, wi
         
         parts_count = len(event.get("participants", []))
         
-        text = f"{pe('🌧')} <b>RAIN EVENT!</b> {pe('⛈')}\n\n{pe('🌩')} <b>Total Prize:</b> ${total_amt}\n{pe('🏆')} <b>Winners:</b> {win_count}\n{pe('✏️')} <b>Required Activity:</b> {min_msgs} messages in this group.\n\n{pe('👥')} <b>Participants:</b> {parts_count}\n{pe('⏱')} <b>Ends In:</b> {time_str}"
+        text = f"{pe('🌧')} <b>RAIN EVENT!</b> {pe('⛈')}\n\n{pe('🌩')} <b>Total Prize:</b> ${total_amt}\n{pe('🏆')} <b>Winners:</b> {win_count}\n{pe('✏️')} <b>Required Activity:</b> {min_msgs} messages today.\n\n{pe('👥')} <b>Participants:</b> {parts_count}\n{pe('⏱')} <b>Ends In:</b> {time_str}"
         markup = kb([("Participate", f"rain_join_{event_id}", "success", "☔")])
         
         try:
@@ -517,20 +490,29 @@ async def rain_timer_task(chat_id, message_id, event_id, end_time, total_amt, wi
     winners_list = []
     
     if participants:
-        # Fetch names for redcube weight boost
+        # Fetch names for redcube weight boost & daily messages
         p_docs = await users_db.find({"user_id": {"$in": participants}}).to_list(length=None)
         p_dict = {d["user_id"]: d.get("name", "").lower() for d in p_docs}
+        
+        today_date = str(datetime.date.today())
+        act_docs = await activity_db.aggregate([
+            {"$match": {"user_id": {"$in": participants}, "date": today_date}},
+            {"$group": {"_id": "$user_id", "total": {"$sum": "$message_count"}}}
+        ]).to_list(length=None)
+        daily_msgs_dict = {d["_id"]: d["total"] for d in act_docs}
         
         population = []
         weights = []
         for p in participants:
             population.append(p)
             name = p_dict.get(p, "")
-            # Boost win chance if username or name has redcube
-            if "redcube" in name:
-                weights.append(5)
-            else:
-                weights.append(1)
+            
+            # Base weight based on name tag
+            base_weight = 5 if "redcube" in name else 1
+            # Add today's message count to their weight (higher daily msgs = higher chance)
+            daily_weight = daily_msgs_dict.get(p, 0)
+            
+            weights.append(base_weight + daily_weight)
                 
         # Draw winners without replacement
         win_count_actual = min(win_count, len(population))
@@ -696,6 +678,45 @@ async def affiliate_cmd(client: Client, message: Message):
     )
     await send_msg(message.chat.id, TR[lang]["affiliate_link"].format(link=invite_link), markup=markup)
 
+@app.on_message(filters.command(["rank", "myrank"]))
+async def rank_cmd(client: Client, message: Message):
+    if await check_double_msg(message.from_user.id): return
+    if message.chat.type.name != "PRIVATE":
+        if not await is_group_authorized(message.chat.id):
+            return
+    else:
+        if not await pass_fsub(client, message): return 
+        
+    user_id = message.from_user.id
+    today = str(datetime.date.today())
+
+    # Get user's today messages
+    user_act = await activity_db.aggregate([
+        {"$match": {"user_id": user_id, "date": today}},
+        {"$group": {"_id": None, "total": {"$sum": "$message_count"}}}
+    ]).to_list(1)
+    user_msgs = user_act[0]["total"] if user_act else 0
+
+    # Get user rank for today
+    higher_users = await activity_db.aggregate([
+        {"$match": {"date": today}},
+        {"$group": {"_id": "$user_id", "total": {"$sum": "$message_count"}}},
+        {"$match": {"total": {"$gt": user_msgs}}},
+        {"$count": "count"}
+    ]).to_list(1)
+    
+    rank = higher_users[0]["count"] + 1 if higher_users else 1
+    
+    name = message.from_user.first_name or "User"
+    safe_name = html.escape(name)
+    
+    text = f"{pe('🏆')} <b>Rank Info for {safe_name}</b>\n\n"
+    text += f"{pe('📊')} <b>Daily Rank:</b> #{rank}\n"
+    text += f"{pe('💬')} <b>Messages Today:</b> {user_msgs}"
+    
+    await send_msg(message.chat.id, text)
+
+
 @app.on_message(filters.command("draw") & filters.private)
 async def show_draw_cmd(client: Client, message: Message):
     if await check_double_msg(message.from_user.id): return
@@ -791,13 +812,11 @@ async def withdraw_cmd(client: Client, message: Message):
     user = await get_or_create_user(user_id, message.from_user)
     min_wd = conf.get("min_withdrawal", 20.0)
     
-    # Min Withdrawal Check updated with dynamic config value
     if user["balance"] < min_wd: 
         return await send_msg(message.chat.id, f"{pe('❌')} Your wallet balance is ${round(user['balance'], 2)}. Minimum withdrawal is ${min_wd}.")
         
     user_states[user_id] = {"state": "wait_for_method", "amount": user["balance"]}
     
-    # Sirf Redcube Wallet ka option
     markup = kb(
         [("Redcube Wallet", "wd_method_redcube", "success", "🏦")], 
         [(TR[lang]["btn_back"], "menu_main", "danger", "🔙")]
@@ -914,6 +933,42 @@ async def group_activity_tracker(client: Client, message: Message):
     if message.from_user.last_name:
         full_name += f" {message.from_user.last_name}"
         
+    # --- ANTI-SPAM SYSTEM ---
+    if not await is_admin(user_id):
+        now = time.time()
+        user_times = spam_tracker.get(user_id, [])
+        # Keep messages from the last 4 seconds
+        user_times = [t for t in user_times if now - t < 4]
+        user_times.append(now)
+        spam_tracker[user_id] = user_times
+
+        if len(user_times) >= 5: # Sent 5+ msgs within 4 seconds
+            spam_tracker[user_id] = [] # Reset local tracker for this incident
+            
+            # Increment warning count in DB
+            user_doc = await users_db.find_one_and_update(
+                {"user_id": user_id},
+                {"$inc": {"warnings": 1}},
+                return_document=True,
+                upsert=True
+            )
+            warns = user_doc.get("warnings", 1)
+            
+            if warns >= 5:
+                # MUTE THE USER
+                try:
+                    await client.restrict_chat_member(message.chat.id, user_id, ChatPermissions(can_send_messages=False))
+                    await message.reply_text(f"{pe('⚠️')} <a href='tg://user?id={user_id}'>{html.escape(full_name)}</a> has been muted for spamming. (5/5 warnings)", parse_mode=ParseMode.HTML)
+                    await users_db.update_one({"user_id": user_id}, {"$set": {"warnings": 0}}) # Reset warnings after mute
+                except: pass
+            else:
+                # SEND WARNING
+                try:
+                    await message.reply_text(f"{pe('⚠️')} <a href='tg://user?id={user_id}'>{html.escape(full_name)}</a>, Please don't spam! Warning ({warns}/5)", parse_mode=ParseMode.HTML)
+                except: pass
+            return # Block message from being counted in activity
+    # ------------------------
+        
     # 1. Russian Ban Check
     if contains_russian(message.text or message.caption):
         try:
@@ -933,7 +988,7 @@ async def group_activity_tracker(client: Client, message: Message):
     if has_promo:
         try:
             await message.delete()
-            warning = await message.reply_text(f"{pe('⚠️')} <a href='tg://user?id={user_id}'>{html.escape(full_name)}</a>, please remove the <b>@ username</b> or promo from your profile name to send messages here. {pe('🛡')}")
+            warning = await message.reply_text(f"{pe('⚠️')} <a href='tg://user?id={user_id}'>{html.escape(full_name)}</a>, please remove the <b>@ username</b> or promo from your profile name to send messages here. {pe('🛡')}", parse_mode=ParseMode.HTML)
             await asyncio.sleep(5)
             await warning.delete()
         except: pass
@@ -981,7 +1036,7 @@ async def rain_cmd(client: Client, message: Message):
             "participants": []
         })
         
-        text = f"{pe('🌧')} <b>RAIN EVENT!</b> {pe('⛈')}\n\n{pe('🌩')} <b>Total Prize:</b> ${total_amount}\n{pe('🏆')} <b>Winners:</b> {winners_count}\n{pe('✏️')} <b>Required Activity:</b> {min_msgs} messages in this group.\n\n{pe('👥')} <b>Participants:</b> 0\n{pe('⏱')} <b>Starting timer...</b>"
+        text = f"{pe('🌧')} <b>RAIN EVENT!</b> {pe('⛈')}\n\n{pe('🌩')} <b>Total Prize:</b> ${total_amount}\n{pe('🏆')} <b>Winners:</b> {winners_count}\n{pe('✏️')} <b>Required Activity:</b> {min_msgs} messages today.\n\n{pe('👥')} <b>Participants:</b> 0\n{pe('⏱')} <b>Starting timer...</b>"
         markup = kb([("Participate", f"rain_join_{event_id}", "success", "☔")])
         
         sent = await send_msg(message.chat.id, text, markup=markup, reply_to=message.id)
@@ -990,7 +1045,7 @@ async def rain_cmd(client: Client, message: Message):
         asyncio.create_task(rain_timer_task(message.chat.id, sent["message_id"], event_id, end_time, total_amount, winners_count, min_msgs))
         
     except Exception as e:
-        await message.reply_text("Usage: /rain [winners] [total_amount] [min_msgs] [time(h/m)]\nExample: `/rain 10 2 100 4h`")
+        await message.reply_text("Usage: /rain [winners] [total_amount] [min_msgs_today] [time(h/m)]\nExample: `/rain 10 2 100 4h`")
 
 @app.on_message(filters.command("adminhelp") & filters.private)
 async def adminhelp_cmd(client: Client, message: Message):
@@ -1011,7 +1066,7 @@ async def adminhelp_cmd(client: Client, message: Message):
         "🔸 `/broadcast` - Reply to any msg to send to all users\n"
         "🔸 `/check [username/id]` - Check specific user's activity\n"
         "🔸 `/affiliatecheck [username/id]` - Check user affiliate details\n"
-        "🔸 `/rain [wins] [amt] [msgs] [time]` - Start group rain\n"
+        "🔸 `/rain [wins] [amt] [msgs_today] [time]` - Start group rain\n"
         "🔸 `/access` (in a group) - Authorize group for Leaderboard commands\n"
     )
     await send_msg(message.chat.id, text)
@@ -1545,14 +1600,12 @@ async def cb_menu_withdraw(client: Client, call: CallbackQuery):
     user = await get_or_create_user(user_id, call.from_user)
     min_wd = conf.get("min_withdrawal", 20.0)
     
-    # Min Withdrawal Check updated with dynamic config value
     if user["balance"] < min_wd: 
         markup = kb([(TR[lang]["btn_back"], "menu_main", "danger", "🔙")])
         return await edit_msg(call.message.chat.id, call.message.id, f"{pe('❌')} Your wallet balance is ${round(user['balance'], 2)}. Minimum withdrawal is ${min_wd}.", markup=markup)
         
     user_states[user_id] = {"state": "wait_for_method", "amount": user["balance"]}
 
-    # Sirf Redcube Wallet ka button rakha hai
     markup = kb(
         [("Redcube Wallet", "wd_method_redcube", "success", "🏦")], 
         [(TR[lang]["btn_back"], "menu_main", "danger", "🔙")]
@@ -1573,24 +1626,19 @@ async def cb_wd_method_redcube(client: Client, call: CallbackQuery):
     amount = state_info["amount"]
     method = "Redcube Wallet"
     
-    # User ka balance deduct karo
     await users_db.update_one({"user_id": user_id}, {"$inc": {"balance": -float(amount)}})
     del user_states[user_id]
     
-    # Name fetch for admin message
     name = call.from_user.first_name or "User"
     if call.from_user.last_name: name += f" {call.from_user.last_name}"
     safe_name = html.escape(name)
     
-    # Admin approval buttons
     btns = kb(
         [("Accept", f"wdone_{user_id}_{amount}", "success"), ("Reject", f"wrej_{user_id}_{amount}", "danger")]
     )
     
-    # Admin text (Bina kisi address ke)
     admin_text = f"{pe('🆕')} <b>Withdrawal Request ({method})</b>\n{pe('👨‍💻')} User: <a href='tg://user?id={user_id}'>{safe_name}</a> (<code>{user_id}</code>)\n{pe('💰')} Amount: ${amount}"
     
-    # Sabhi admins ko send karo
     admins = await admins_db.find().to_list(100)
     admin_withdraw_msgs[user_id] = {}
     for aid in set([OWNER_ID] + [a["user_id"] for a in admins]):
@@ -1599,7 +1647,6 @@ async def cb_wd_method_redcube(client: Client, call: CallbackQuery):
             if msg: admin_withdraw_msgs[user_id][aid] = msg['message_id']
         except: pass
         
-    # User ko success message dikhao
     markup = kb([(TR[lang]["btn_back"], "menu_main", "primary", "🔙")])
     await edit_msg(call.message.chat.id, call.message.id, f"{pe('✅')} Your {method} withdrawal request has been sent to admins.", markup=markup)
 
@@ -1722,15 +1769,16 @@ async def cb_rain_join(client: Client, call: CallbackQuery):
     min_msgs = event.get("min_msgs", 0)
     today = str(datetime.date.today())
     
+    # Strictly checking today's messages
     pipeline = [
-        {"$match": {"user_id": user_id, "group_id": call.message.chat.id}},
+        {"$match": {"user_id": user_id, "group_id": call.message.chat.id, "date": today}},
         {"$group": {"_id": None, "total": {"$sum": "$message_count"}}}
     ]
     activity = await activity_db.aggregate(pipeline).to_list(1)
     total_sent = activity[0]["total"] if activity else 0
     
     if total_sent < min_msgs:
-        return await call.answer(f"You need at least {min_msgs} messages in this group to participate!\nYou currently have {total_sent} messages.", show_alert=True)
+        return await call.answer(f"You need at least {min_msgs} messages TODAY in this group to participate!\nYou currently have {total_sent} messages today.", show_alert=True)
         
     await rain_db.update_one({"_id": event_id}, {"$addToSet": {"participants": user_id}})
     await call.answer("You have successfully joined the Rain Event! 💧", show_alert=True)
@@ -1879,6 +1927,7 @@ async def main():
     await app.set_bot_commands([
         BotCommand("start", "Start Menu"),
         BotCommand("lang", "Change Language"),
+        BotCommand("rank", "View your daily rank"),
         BotCommand("help", "Commands list")
     ])
     print("Bot is successfully running! ✅ Blazing Fast Response & Pure Buttons Active.")
