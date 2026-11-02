@@ -129,7 +129,6 @@ async def edit_msg(chat_id: int, message_id: int, text: str, markup=None, parse_
             return None # Ignore silent errors when clicking the same active button
         return await send_msg(chat_id, text, markup=markup, parse_mode=parse_mode, disable_web_page_preview=disable_web_page_preview)
 
-
 # ================= INITIALIZATION =================
 app = Client("my_advanc9768e6d_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
@@ -347,7 +346,7 @@ def get_main_menu(lang: str):
         [(tr["btn_support"], "menu_support", "danger", "🎟"), (tr["btn_language"], "menu_lang", "primary", "🌐")]
     )
 
-async def generate_leaderboard_text(period, page, group_id=None):
+async def generate_leaderboard_text(period, page, group_id):
     today = datetime.date.today()
     if period == "daily":
         match_date = {"$gte": str(today)}
@@ -365,10 +364,7 @@ async def generate_leaderboard_text(period, page, group_id=None):
     if cache_key in ldb_cache and (now - ldb_cache[cache_key]["time"] < 60):
         return ldb_cache[cache_key]["text"], ldb_cache[cache_key]["max_pages"]
     
-    match_query = {"date": match_date}
-    if group_id and group_id < 0:
-        match_query["group_id"] = group_id
-        title = f"{title} (GROUP)"
+    match_query = {"date": match_date, "group_id": group_id}
         
     pipeline = [
         {"$match": match_query},
@@ -688,34 +684,28 @@ async def affiliate_cmd(client: Client, message: Message):
 @app.on_message(filters.command(["rank", "myrank"]))
 async def rank_cmd(client: Client, message: Message):
     if await check_double_msg(message.from_user.id): return
-    if message.chat.id < 0: # Check if in Group
-        if not await is_group_authorized(message.chat.id):
-            return
-    else:
+    
+    is_private = message.chat.id > 0
+    if is_private:
         if not await pass_fsub(client, message): return 
+        group_id = TRACK_GROUP_ID
+    else:
+        if not await is_group_authorized(message.chat.id): return
+        group_id = message.chat.id
         
     user_id = message.from_user.id
     today = str(datetime.date.today())
 
-    # Build Match Query
-    match_query = {"date": today}
-    title_ext = ""
-    if message.chat.id < 0:
-        match_query["group_id"] = message.chat.id
-        title_ext = " (GROUP)"
-    else:
-        title_ext = " (GLOBAL)"
-
-    # Get user's today messages
+    # Get user's today messages for specific group
     user_act = await activity_db.aggregate([
-        {"$match": {"user_id": user_id, **match_query}},
+        {"$match": {"user_id": user_id, "date": today, "group_id": group_id}},
         {"$group": {"_id": None, "total": {"$sum": "$message_count"}}}
     ]).to_list(1)
     user_msgs = user_act[0]["total"] if user_act else 0
 
-    # Get user rank for today
+    # Get user rank for today in specific group
     higher_users = await activity_db.aggregate([
-        {"$match": match_query},
+        {"$match": {"date": today, "group_id": group_id}},
         {"$group": {"_id": "$user_id", "total": {"$sum": "$message_count"}}},
         {"$match": {"total": {"$gt": user_msgs}}},
         {"$count": "count"}
@@ -726,7 +716,7 @@ async def rank_cmd(client: Client, message: Message):
     name = message.from_user.first_name or "User"
     safe_name = html.escape(name)
     
-    text = f"{pe('🏆')} <b>Rank Info for {safe_name}{title_ext}</b>\n\n"
+    text = f"{pe('🏆')} <b>Rank Info for {safe_name}</b>\n\n"
     text += f"{pe('📊')} <b>Daily Rank:</b> #{rank}\n"
     text += f"{pe('💬')} <b>Messages Today:</b> {user_msgs}"
     
@@ -764,41 +754,51 @@ async def show_draw_cmd(client: Client, message: Message):
 async def leaderboard_cmd(client: Client, message: Message):
     if await check_double_msg(message.from_user.id): return
     
-    group_id = None
-    if message.chat.id < 0: # IN GROUP
-        if not await is_group_authorized(message.chat.id):
-            return
-        group_id = message.chat.id
-    else: # IN PRIVATE
+    is_private = message.chat.id > 0
+    if is_private:
         if not await pass_fsub(client, message): return 
+        group_id = TRACK_GROUP_ID
+    else:
+        if not await is_group_authorized(message.chat.id): return
+        group_id = message.chat.id
         
     cmd = message.command[0].lower()
     period = cmd if cmd in ["daily", "weekly", "monthly"] else "weekly"
     lang = await get_lang(message.from_user.id)
     tr = TR.get(lang, TR["en"])
     
-    text, max_pages = await generate_leaderboard_text(period, 0, group_id=group_id)
+    text, max_pages = await generate_leaderboard_text(period, 0, group_id)
     
     d_style = "success" if period == "daily" else "primary"
     w_style = "success" if period == "weekly" else "primary"
     m_style = "success" if period == "monthly" else "primary"
     
-    gid_str = str(group_id) if group_id else "global"
-    
-    btn_rows = [
-        [(tr["btn_daily"], f"ldb_daily_0_{gid_str}", d_style, "📅"), 
-         (tr["btn_weekly"], f"ldb_weekly_0_{gid_str}", w_style, "📅"), 
-         (tr["btn_monthly"], f"ldb_monthly_0_{gid_str}", m_style, "📅")]
-    ]
-    
-    if max_pages > 0:
-        btn_rows.append([("Next ➡️", f"ldb_{period}_1_{gid_str}", "primary", "➡️")])
-        
-    if message.chat.id > 0: # IF PRIVATE
-        btn_rows.append([(tr["btn_back"], "menu_main", "danger", "🔙")])
-        
-    btns = kb(*btn_rows)
-    await send_msg(message.chat.id, text, markup=btns, disable_web_page_preview=True)
+    if is_private:
+        # Private: Always show buttons + Back button
+        btns = kb(
+            [(tr["btn_daily"], "ldb_daily_0", d_style, "📅"), 
+             (tr["btn_weekly"], "ldb_weekly_0", w_style, "📅"), 
+             (tr["btn_monthly"], "ldb_monthly_0", m_style, "📅")],
+            [(tr["btn_back"], "menu_main", "danger", "🔙")]
+        )
+        await send_msg(message.chat.id, text, markup=btns, disable_web_page_preview=True)
+    else:
+        # Group: Only show buttons if the exact command was /leaderboard
+        if cmd == "leaderboard":
+            btn_rows = [
+                [(tr["btn_daily"], "ldb_daily_0", d_style, "📅"), 
+                 (tr["btn_weekly"], "ldb_weekly_0", w_style, "📅"), 
+                 (tr["btn_monthly"], "ldb_monthly_0", m_style, "📅")]
+            ]
+            if max_pages > 0:
+                btn_rows.append([("Next ➡️", f"ldb_{period}_1", "primary", "➡️")])
+                
+            btns = kb(*btn_rows)
+            await send_msg(message.chat.id, text, markup=btns, disable_web_page_preview=True)
+        else:
+            # If they just typed /daily, /weekly, /monthly in a group -> No Buttons
+            await send_msg(message.chat.id, text, disable_web_page_preview=True)
+
 
 @app.on_message(filters.command(["balance", "bal"]) & filters.private)
 async def balance_cmd(client: Client, message: Message):
@@ -1592,9 +1592,10 @@ async def cb_set_lang(client: Client, call: CallbackQuery):
 async def cb_menu_leaderboard(client: Client, call: CallbackQuery):
     await call.answer()
     
-    group_id = None
-    if call.message.chat.id > 0: # IF PRIVATE
+    is_private = call.message.chat.id > 0
+    if is_private:
         if not await pass_fsub(client, call): return 
+        group_id = TRACK_GROUP_ID
     else:
         if not await is_group_authorized(call.message.chat.id): return
         group_id = call.message.chat.id
@@ -1602,55 +1603,54 @@ async def cb_menu_leaderboard(client: Client, call: CallbackQuery):
     lang = await get_lang(call.from_user.id)
     tr = TR.get(lang, TR["en"])
     
-    text, max_pages = await generate_leaderboard_text("weekly", 0, group_id=group_id)
-    gid_str = str(group_id) if group_id else "global"
+    text, max_pages = await generate_leaderboard_text("weekly", 0, group_id)
     
     btn_rows = [
-        [(tr["btn_daily"], f"ldb_daily_0_{gid_str}", "primary", "📅"), 
-         (tr["btn_weekly"], f"ldb_weekly_0_{gid_str}", "success", "📅"), 
-         (tr["btn_monthly"], f"ldb_monthly_0_{gid_str}", "primary", "📅")]
+        [(tr["btn_daily"], "ldb_daily_0", "primary", "📅"), 
+         (tr["btn_weekly"], "ldb_weekly_0", "success", "📅"), 
+         (tr["btn_monthly"], "ldb_monthly_0", "primary", "📅")]
     ]
     
     if max_pages > 0:
-        btn_rows.append([("Next ➡️", f"ldb_weekly_1_{gid_str}", "primary", "➡️")])
+        btn_rows.append([("Next ➡️", "ldb_weekly_1", "primary", "➡️")])
         
-    if call.message.chat.id > 0: # IF PRIVATE
+    if is_private:
         btn_rows.append([(tr["btn_back"], "menu_main", "danger", "🔙")])
         
     btns = kb(*btn_rows)
     await edit_msg(call.message.chat.id, call.message.id, text, markup=btns, disable_web_page_preview=True)
 
-@app.on_callback_query(filters.regex(r"^ldb_(daily|weekly|monthly)_(\d+)_(.+)$"))
+@app.on_callback_query(filters.regex(r"^ldb_(daily|weekly|monthly)_(\d+)$"))
 async def cb_ldb_pagination(client: Client, call: CallbackQuery):
-    match = re.match(r"^ldb_(daily|weekly|monthly)_(\d+)_(.+)$", call.data)
+    match = re.match(r"^ldb_(daily|weekly|monthly)_(\d+)$", call.data)
     if not match: return await call.answer()
     
     period = match.group(1)
     page = int(match.group(2))
-    gid_str = match.group(3)
-    group_id = int(gid_str) if gid_str != "global" else None
+    
+    is_private = call.message.chat.id > 0
+    group_id = TRACK_GROUP_ID if is_private else call.message.chat.id
     
     lang = await get_lang(call.from_user.id)
     tr = TR.get(lang, TR["en"])
     
-    text, max_pages = await generate_leaderboard_text(period, page, group_id=group_id)
+    text, max_pages = await generate_leaderboard_text(period, page, group_id)
     
-    is_private = call.message.chat.id > 0
     d_style = "success" if period == "daily" else "primary"
     w_style = "success" if period == "weekly" else "primary"
     m_style = "success" if period == "monthly" else "primary"
     
     btn_rows = [
-        [(tr["btn_daily"], f"ldb_daily_0_{gid_str}", d_style, "📅"),
-         (tr["btn_weekly"], f"ldb_weekly_0_{gid_str}", w_style, "📅"),
-         (tr["btn_monthly"], f"ldb_monthly_0_{gid_str}", m_style, "📅")]
+        [(tr["btn_daily"], "ldb_daily_0", d_style, "📅"),
+         (tr["btn_weekly"], "ldb_weekly_0", w_style, "📅"),
+         (tr["btn_monthly"], "ldb_monthly_0", m_style, "📅")]
     ]
     
     nav_row = []
     if page > 0:
-        nav_row.append(("⬅️ Prev", f"ldb_{period}_{page-1}_{gid_str}", "primary", "🔙"))
+        nav_row.append(("⬅️ Prev", f"ldb_{period}_{page-1}", "primary", "🔙"))
     if page < max_pages:
-        nav_row.append(("Next ➡️", f"ldb_{period}_{page+1}_{gid_str}", "primary", "➡️"))
+        nav_row.append(("Next ➡️", f"ldb_{period}_{page+1}", "primary", "➡️"))
     if nav_row:
         btn_rows.append(nav_row)
         
