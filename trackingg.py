@@ -141,7 +141,7 @@ auth_groups_db = db['authorized_groups']
 rain_db = db['rain_events']
 
 user_states = {}
-active_tickets = {}   
+active_tickets = {}    
 pending_tickets = {}  
 user_langs = {}  
 
@@ -174,7 +174,7 @@ TR = {
         "tkt_joined": f"{pe('👨‍💻')} <b>An admin has joined the chat!</b>\nYou can now talk directly to them.",
         "tkt_closed": f"{pe('🔐')} <b>Your ticket has been closed.</b>",
         "tkt_rejected": f"{pe('❌')} <b>Your ticket ({{tkt}}) has been rejected by an admin.</b>",
-        "draw_none": "No draw results available yet.",
+        "draw_none": f"{pe('❌')} No draw results available yet.",
         "draw_res": f"{pe('🎉')} <b>DAILY DRAW RESULTS</b> {pe('🎉')}\n\n{pe('⏱')} <b>Time:</b> {{time}}\n{pe('👥')} <b>Total Participants:</b> {{total}}\n{pe('🎁')} <b>Prize:</b> ${{amt}} each\n\n{pe('🏆')} <b>Winners:</b>\n{{winners}}",
         "wd_addr": f"{pe('📍')} Please send your {pe('💎')} TON withdrawal address:\n\n<b>Example:</b> <code>UQ...</code>",
         "wd_rej": f"{pe('❌')} <b>Withdrawal Rejected!</b>\nAmount: ${{amount}}\nReason: {{reason}}\nFunds refunded.",
@@ -205,7 +205,7 @@ TR = {
         "tkt_joined": f"{pe('👨‍💻')} <b>Администратор подключился!</b>\nТеперь вы можете общаться с ним.",
         "tkt_closed": f"{pe('🔐')} <b>Ваш тикет закрыт.</b>",
         "tkt_rejected": f"{pe('❌')} <b>Ваш тикет ({{tkt}}) был отклонен администратором.</b>",
-        "draw_none": "Результаты розыгрыша пока недоступны.",
+        "draw_none": f"{pe('❌')} Результаты розыгрыша пока недоступны.",
         "draw_res": f"{pe('🎉')} <b>РЕЗУЛЬТАТЫ РОЗЫГРЫША</b> {pe('🎉')}\n\n{pe('⏱')} <b>Время:</b> {{time}}\n{pe('👥')} <b>Участников:</b> {{total}}\n{pe('🎁')} <b>Приз:</b> ${{amt}} каждому\n\n{pe('🏆')} <b>Победители:</b>\n{{winners}}",
         "wd_addr": f"{pe('📍')} Пожалуйста, отправьте ваш адрес {pe('💎')} TON:\n\n<b>Пример:</b> <code>UQ...</code>",
         "wd_rej": f"{pe('❌')} <b>Вывод отклонен!</b>\nСумма: ${{amount}}\nПричина: {{reason}}\nСредства возвращены.",
@@ -236,7 +236,7 @@ TR = {
         "tkt_joined": f"{pe('👨‍💻')} <b>एक एडमिन चैट में शामिल हो गया है!</b>\nअब आप सीधे उनसे बात कर सकते हैं।",
         "tkt_closed": f"{pe('🔐')} <b>आपका टिकट बंद कर दिया गया है।</b>",
         "tkt_rejected": f"{pe('❌')} <b>आपका टिकट ({{tkt}}) एडमिन द्वारा अस्वीकार कर दिया गया है।</b>",
-        "draw_none": "अभी तक कोई ड्रा रिज़ल्ट उपलब्ध नहीं है।",
+        "draw_none": f"{pe('❌')} अभी तक कोई ड्रा रिज़ल्ट उपलब्ध नहीं है।",
         "draw_res": f"{pe('🎉')} <b>डेली ड्रा रिज़ल्ट</b> {pe('🎉')}\n\n{pe('⏱')} <b>समय:</b> {{time}}\n{pe('👥')} <b>कुल प्रतिभागी:</b> {{total}}\n{pe('🎁')} <b>इनाम:</b> ${{amt}} प्रत्येक\n\n{pe('🏆')} <b>विजेता:</b>\n{{winners}}",
         "wd_addr": f"{pe('📍')} कृपया अपना {pe('💎')} TON निकासी पता भेजें:\n\n<b>उदाहरण:</b> <code>UQ...</code>",
         "wd_rej": f"{pe('❌')} <b>निकासी अस्वीकृत!</b>\nरकम: ${{amount}}\nकारण: {{reason}}\nफंड्स वापस कर दिए गए हैं।",
@@ -384,7 +384,7 @@ async def generate_leaderboard_text(period, page):
     
     text = f"{pe('🏆')} <b>{title}</b>\n\n"
     if not results:
-        text += "<i>No activity recorded yet.</i>"
+        text += f"<i>{pe('❌')} No activity recorded yet.</i>"
     else:
         for i, res in enumerate(results, start=(page*10)+1):
             user_info = res.get('user_info', [])
@@ -594,7 +594,7 @@ async def access_cmd(client: Client, message: Message):
         await auth_groups_db.update_one({"chat_id": target_chat}, {"$set": {"chat_id": target_chat}}, upsert=True)
         await send_msg(message.chat.id, f"{pe('✅')} Group <code>{target_chat}</code> authorized successfully! Activity tracking and leaderboards will now work here.")
     except Exception as e:
-        await send_msg(message.chat.id, "Usage: /access [group_id] or use in group.")
+        await send_msg(message.chat.id, f"{pe('✏️')} Usage: /access [group_id] or use in group.")
 
 @app.on_message(filters.command("start") & filters.private)
 async def start_cmd(client: Client, message: Message):
@@ -712,7 +712,7 @@ async def rank_cmd(client: Client, message: Message):
     
     text = f"{pe('🏆')} <b>Rank Info for {safe_name}</b>\n\n"
     text += f"{pe('📊')} <b>Daily Rank:</b> #{rank}\n"
-    text += f"{pe('💬')} <b>Messages Today:</b> {user_msgs}"
+    text += f"{pe('✏️')} <b>Messages Today:</b> {user_msgs}"
     
     await send_msg(message.chat.id, text)
 
@@ -829,7 +829,7 @@ async def close_cmd(client: Client, message: Message):
     user_id = message.from_user.id
     
     if user_id not in active_tickets: 
-        return await send_msg(message.chat.id, "No active ticket.")
+        return await send_msg(message.chat.id, f"{pe('❌')} No active ticket.")
         
     target_id = active_tickets[user_id]
     
@@ -937,12 +937,12 @@ async def group_activity_tracker(client: Client, message: Message):
     if not await is_admin(user_id):
         now = time.time()
         user_times = spam_tracker.get(user_id, [])
-        # Keep messages from the last 4 seconds
-        user_times = [t for t in user_times if now - t < 4]
+        # Strict logic: Keep messages from the last 5 seconds
+        user_times = [t for t in user_times if now - t < 5]
         user_times.append(now)
         spam_tracker[user_id] = user_times
 
-        if len(user_times) >= 5: # Sent 5+ msgs within 4 seconds
+        if len(user_times) >= 5: # Sent 5+ msgs within 5 seconds
             spam_tracker[user_id] = [] # Reset local tracker for this incident
             
             # Increment warning count in DB
@@ -1002,6 +1002,38 @@ async def group_activity_tracker(client: Client, message: Message):
     )
 
 # ================= ADMIN COMMANDS =================
+@app.on_message(filters.command(["wreset", "warnreset"]))
+async def wreset_cmd(client: Client, message: Message):
+    if not await is_admin(message.from_user.id): return
+
+    target_id = None
+    safe_name = "User"
+
+    if message.reply_to_message and message.reply_to_message.from_user:
+        target_id = message.reply_to_message.from_user.id
+        safe_name = html.escape(message.reply_to_message.from_user.first_name or "User")
+    elif len(message.command) > 1:
+        target_input = message.command[1]
+        try:
+            user_info = await app.get_users(target_input)
+            target_id = user_info.id
+            safe_name = html.escape(user_info.first_name or "User")
+        except:
+            try:
+                target_id = int(target_input)
+            except:
+                return await send_msg(message.chat.id, f"{pe('⚠️')} Invalid User ID or Username.")
+    else:
+        return await send_msg(message.chat.id, f"{pe('⚠️')} Usage: Reply to user or use /wreset [username/id]")
+
+    if not target_id: return
+
+    await users_db.update_one({"user_id": target_id}, {"$set": {"warnings": 0}})
+    spam_tracker[target_id] = []
+
+    await send_msg(message.chat.id, f"{pe('✅')} Warnings have been successfully reset to 0 for <a href='tg://user?id={target_id}'>{safe_name}</a>.")
+
+
 @app.on_message(filters.command("rain") & filters.group)
 async def rain_cmd(client: Client, message: Message):
     if not await is_admin(message.from_user.id): return
@@ -1045,7 +1077,7 @@ async def rain_cmd(client: Client, message: Message):
         asyncio.create_task(rain_timer_task(message.chat.id, sent["message_id"], event_id, end_time, total_amount, winners_count, min_msgs))
         
     except Exception as e:
-        await message.reply_text("Usage: /rain [winners] [total_amount] [min_msgs_today] [time(h/m)]\nExample: `/rain 10 2 100 4h`")
+        await message.reply_text(f"{pe('✏️')} Usage: /rain [winners] [total_amount] [min_msgs_today] [time(h/m)]\nExample: `/rain 10 2 100 4h`")
 
 @app.on_message(filters.command("adminhelp") & filters.private)
 async def adminhelp_cmd(client: Client, message: Message):
@@ -1067,6 +1099,7 @@ async def adminhelp_cmd(client: Client, message: Message):
         "🔸 `/check [username/id]` - Check specific user's activity\n"
         "🔸 `/affiliatecheck [username/id]` - Check user affiliate details\n"
         "🔸 `/rain [wins] [amt] [msgs_today] [time]` - Start group rain\n"
+        "🔸 `/wreset [username/id]` - Reset a user's spam warnings (reply works)\n"
         "🔸 `/access` (in a group) - Authorize group for Leaderboard commands\n"
     )
     await send_msg(message.chat.id, text)
@@ -1108,7 +1141,7 @@ async def withdrawupdate_cmd(client: Client, message: Message):
         
         await send_msg(message.chat.id, f"{pe('✅')} Minimum withdrawal limit successfully updated to <b>${new_min}</b>.")
     except:
-        await send_msg(message.chat.id, "Usage: /withdrawupdate [amount]\nExample: `/withdrawupdate 10`")
+        await send_msg(message.chat.id, f"{pe('✏️')} Usage: /withdrawupdate [amount]\nExample: `/withdrawupdate 10`")
 
 @app.on_message(filters.command("toggledraw"))
 async def toggledraw_cmd(client: Client, message: Message):
@@ -1132,7 +1165,7 @@ async def drawsettings_cmd(client: Client, message: Message):
         await config_db.update_one({"_id": "settings"}, {"$set": {"draw_winners_count": count, "draw_amount": amount}}, upsert=True)
         await send_msg(message.chat.id, f"{pe('✅')} <b>Draw Settings Updated!</b>\nWinners per draw: {count}\nAmount per winner: ${amount}")
     except:
-        await send_msg(message.chat.id, "Usage: /drawsettings [number_of_winners] [amount_per_winner]\nExample: `/drawsettings 10 2.5`")
+        await send_msg(message.chat.id, f"{pe('✏️')} Usage: /drawsettings [number_of_winners] [amount_per_winner]\nExample: `/drawsettings 10 2.5`")
 
 @app.on_message(filters.command("redraw"))
 async def redraw_cmd(client: Client, message: Message):
@@ -1217,7 +1250,7 @@ async def addadmin_cmd(client: Client, message: Message):
         target = int(message.text.split()[1])
         await admins_db.update_one({"user_id": target}, {"$set": {"user_id": target}}, upsert=True)
         await send_msg(message.chat.id, f"{pe('✅')} User <code>{target}</code> is now an Admin.")
-    except: await send_msg(message.chat.id, "Usage: /addadmin [user_id]")
+    except: await send_msg(message.chat.id, f"{pe('✏️')} Usage: /addadmin [user_id]")
 
 @app.on_message(filters.command("removeadmin"))
 async def removeadmin_cmd(client: Client, message: Message):
@@ -1226,7 +1259,7 @@ async def removeadmin_cmd(client: Client, message: Message):
         target = int(message.text.split()[1])
         await admins_db.delete_one({"user_id": target})
         await send_msg(message.chat.id, f"{pe('✅')} Admin <code>{target}</code> removed.")
-    except: await send_msg(message.chat.id, "Usage: /removeadmin [user_id]")
+    except: await send_msg(message.chat.id, f"{pe('✏️')} Usage: /removeadmin [user_id]")
 
 @app.on_message(filters.command("adminlist"))
 async def adminlist_cmd(client: Client, message: Message):
@@ -1245,7 +1278,7 @@ async def setprice_cmd(client: Client, message: Message):
         rew = float(parts[2])
         await config_db.update_one({"_id": "settings"}, {"$set": {"affiliate_req": m_req, "affiliate_reward": rew}}, upsert=True)
         await send_msg(message.chat.id, f"{pe('✅')} Price updated: ${rew} per {m_req} members.")
-    except: await send_msg(message.chat.id, "Usage: /setprice [members] [reward amount]")
+    except: await send_msg(message.chat.id, f"{pe('✏️')} Usage: /setprice [members] [reward amount]")
 
 @app.on_message(filters.command("togglewithdraw"))
 async def togglewd_cmd(client: Client, message: Message):
@@ -1262,7 +1295,7 @@ async def togglewd_cmd(client: Client, message: Message):
 @app.on_message(filters.command("broadcast"))
 async def broadcast_cmd(client: Client, message: Message):
     if not await is_admin(message.from_user.id): return
-    if not message.reply_to_message: return await send_msg(message.chat.id, "Reply to a message to broadcast.")
+    if not message.reply_to_message: return await send_msg(message.chat.id, f"{pe('✏️')} Reply to a message to broadcast.")
     users = await users_db.find().to_list(length=None)
     sent = 0
     for u in users:
@@ -1427,7 +1460,7 @@ async def cb_menu_affiliate(client: Client, call: CallbackQuery):
             invite_link = invite.invite_link
             await users_db.update_one({"user_id": user_id}, {"$set": {"affiliate_link": invite_link}})
         except:
-            return await send_msg(call.message.chat.id, "Error creating link. Bot must be admin.")
+            return await send_msg(call.message.chat.id, f"{pe('❌')} Error creating link. Bot must be admin.")
             
     markup = kb(
         [("Affiliate Status", "menu_aff_stats", "primary", "📊")],
@@ -1458,7 +1491,7 @@ async def cb_menu_support(client: Client, call: CallbackQuery):
     lang = await get_lang(user_id)
     
     if user_id in active_tickets or user_id in pending_tickets:
-        return await send_msg(call.message.chat.id, "You already have an active/pending ticket.")
+        return await send_msg(call.message.chat.id, f"{pe('⚠️')} You already have an active/pending ticket.")
         
     user_states[user_id] = {"state": "wait_for_support"}
     markup = kb([(TR[lang]["btn_back"], "menu_main", "danger", "🔙")])
@@ -1621,7 +1654,7 @@ async def cb_wd_method_redcube(client: Client, call: CallbackQuery):
     state_info = user_states.get(user_id, {})
     
     if state_info.get("state") != "wait_for_method":
-        return await send_msg(call.message.chat.id, "Session expired. Please request withdrawal again.")
+        return await send_msg(call.message.chat.id, f"{pe('⚠️')} Session expired. Please request withdrawal again.")
         
     amount = state_info["amount"]
     method = "Redcube Wallet"
@@ -1658,7 +1691,7 @@ async def ticket_accept(client: Client, call: CallbackQuery):
     target_id = int(call.data.split("_")[1])
     
     if target_id not in pending_tickets:
-        return await send_msg(call.message.chat.id, "This ticket is no longer pending or has been closed.")
+        return await send_msg(call.message.chat.id, f"{pe('❌')} This ticket is no longer pending or has been closed.")
         
     pending_tickets.pop(target_id, None) 
     active_tickets[target_id] = call.from_user.id
@@ -1761,10 +1794,10 @@ async def cb_rain_join(client: Client, call: CallbackQuery):
     
     event = await rain_db.find_one({"_id": event_id})
     if not event:
-        return await call.answer("This event has ended!", show_alert=True)
+        return await call.answer("This event has ended! ❌", show_alert=True)
         
     if user_id in event.get("participants", []):
-        return await call.answer("You are already participating!", show_alert=True)
+        return await call.answer("You are already participating! ⚠️", show_alert=True)
         
     min_msgs = event.get("min_msgs", 0)
     today = str(datetime.date.today())
