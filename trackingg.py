@@ -1,11 +1,11 @@
 import asyncio
 
-# ================= PYROGRAM ASYNCIO FIX =================
+# ================= PYROGRAM ASYNCIO FIX (FOR NEWER PYTHON VERSIONS) =================
 try:
     asyncio.get_event_loop()
 except RuntimeError:
     asyncio.set_event_loop(asyncio.new_event_loop())
-# ========================================================
+# ====================================================================================
 
 import datetime
 import random
@@ -48,6 +48,7 @@ async def get_session() -> aiohttp.ClientSession:
         HTTP_SESSION = aiohttp.ClientSession(connector=connector, timeout=timeout)
     return HTTP_SESSION
 
+# Raw API Caller like bot_native.py (Prevents Pyrogram Stuck Issues)
 async def tg(method: str, retries: int = 2, **params):
     clean = {k: v for k, v in params.items() if v is not None}
     base = f"https://api.telegram.org/bot{BOT_TOKEN}/"
@@ -84,7 +85,7 @@ PREMIUM_EMOJIS = {
     "💎": "5298988357538328017", "🏠": "5258503720928288433", "📢": "5938589252328624108",
     "🔙": "5255703720078879038", "💧": "5334757303667232230", "🌧": "5393512611968995988",
     "⛈": "5224257782013769471", "🌩": "5089144476023128742", "🌨": "5839380464116175529",
-    "🌦": "5258362837411045098", "☔": "5348289410955754971", "💬": "5893262628435794828"
+    "🌦": "5258362837411045098", "☔": "5348289410955754971"
 }
 
 def pe(emoji_char: str) -> str:
@@ -125,6 +126,7 @@ async def edit_msg(chat_id: int, message_id: int, text: str, markup=None, parse_
         return await tg("editMessageText", chat_id=chat_id, message_id=message_id, text=text, reply_markup=markup, parse_mode=parse_mode, disable_web_page_preview=disable_web_page_preview)
     except Exception:
         return await send_msg(chat_id, text, markup=markup, parse_mode=parse_mode, disable_web_page_preview=disable_web_page_preview)
+
 
 # ================= INITIALIZATION =================
 app = Client("my_advanc9768e6d_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
@@ -172,7 +174,7 @@ TR = {
         "tkt_joined": f"{pe('👨‍💻')} <b>An admin has joined the chat!</b>\nYou can now talk directly to them.",
         "tkt_closed": f"{pe('🔐')} <b>Your ticket has been closed.</b>",
         "tkt_rejected": f"{pe('❌')} <b>Your ticket ({{tkt}}) has been rejected by an admin.</b>",
-        "draw_none": f"{pe('❌')} No draw results available yet.",
+        "draw_none": "No draw results available yet.",
         "draw_res": f"{pe('🎉')} <b>DAILY DRAW RESULTS</b> {pe('🎉')}\n\n{pe('⏱')} <b>Time:</b> {{time}}\n{pe('👥')} <b>Total Participants:</b> {{total}}\n{pe('🎁')} <b>Prize:</b> ${{amt}} each\n\n{pe('🏆')} <b>Winners:</b>\n{{winners}}",
         "wd_addr": f"{pe('📍')} Please send your {pe('💎')} TON withdrawal address:\n\n<b>Example:</b> <code>UQ...</code>",
         "wd_rej": f"{pe('❌')} <b>Withdrawal Rejected!</b>\nAmount: ${{amount}}\nReason: {{reason}}\nFunds refunded.",
@@ -203,7 +205,7 @@ TR = {
         "tkt_joined": f"{pe('👨‍💻')} <b>Администратор подключился!</b>\nТеперь вы можете общаться с ним.",
         "tkt_closed": f"{pe('🔐')} <b>Ваш тикет закрыт.</b>",
         "tkt_rejected": f"{pe('❌')} <b>Ваш тикет ({{tkt}}) был отклонен администратором.</b>",
-        "draw_none": f"{pe('❌')} Результаты розыгрыша пока недоступны.",
+        "draw_none": "Результаты розыгрыша пока недоступны.",
         "draw_res": f"{pe('🎉')} <b>РЕЗУЛЬТАТЫ РОЗЫГРЫША</b> {pe('🎉')}\n\n{pe('⏱')} <b>Время:</b> {{time}}\n{pe('👥')} <b>Участников:</b> {{total}}\n{pe('🎁')} <b>Приз:</b> ${{amt}} каждому\n\n{pe('🏆')} <b>Победители:</b>\n{{winners}}",
         "wd_addr": f"{pe('📍')} Пожалуйста, отправьте ваш адрес {pe('💎')} TON:\n\n<b>Пример:</b> <code>UQ...</code>",
         "wd_rej": f"{pe('❌')} <b>Вывод отклонен!</b>\nСумма: ${{amount}}\nПричина: {{reason}}\nСредства возвращены.",
@@ -234,7 +236,7 @@ TR = {
         "tkt_joined": f"{pe('👨‍💻')} <b>एक एडमिन चैट में शामिल हो गया है!</b>\nअब आप सीधे उनसे बात कर सकते हैं।",
         "tkt_closed": f"{pe('🔐')} <b>आपका टिकट बंद कर दिया गया है।</b>",
         "tkt_rejected": f"{pe('❌')} <b>आपका टिकट ({{tkt}}) एडमिन द्वारा अस्वीकार कर दिया गया है।</b>",
-        "draw_none": f"{pe('❌')} अभी तक कोई ड्रा रिज़ल्ट उपलब्ध नहीं है।",
+        "draw_none": "अभी तक कोई ड्रा रिज़ल्ट उपलब्ध नहीं है।",
         "draw_res": f"{pe('🎉')} <b>डेली ड्रा रिज़ल्ट</b> {pe('🎉')}\n\n{pe('⏱')} <b>समय:</b> {{time}}\n{pe('👥')} <b>कुल प्रतिभागी:</b> {{total}}\n{pe('🎁')} <b>इनाम:</b> ${{amt}} प्रत्येक\n\n{pe('🏆')} <b>विजेता:</b>\n{{winners}}",
         "wd_addr": f"{pe('📍')} कृपया अपना {pe('💎')} TON निकासी पता भेजें:\n\n<b>उदाहरण:</b> <code>UQ...</code>",
         "wd_rej": f"{pe('❌')} <b>निकासी अस्वीकृत!</b>\nरकम: ${{amount}}\nकारण: {{reason}}\nफंड्स वापस कर दिए गए हैं।",
@@ -343,30 +345,26 @@ def get_main_menu(lang: str):
         [(tr["btn_support"], "menu_support", "danger", "🎟"), (tr["btn_language"], "menu_lang", "primary", "🌐")]
     )
 
-async def generate_leaderboard_text(period, page, group_id=None):
+async def generate_leaderboard_text(period, page):
     today = datetime.date.today()
     if period == "daily":
-        date_filter = str(today)
+        match_date = {"$gte": str(today)}
         title = "DAILY ACTIVITY RANKING"
     elif period == "weekly":
-        date_filter = str(today - datetime.timedelta(days=7))
+        match_date = {"$gte": str(today - datetime.timedelta(days=7))}
         title = "WEEKLY ACTIVITY RANKING"
     else: 
-        date_filter = str(today - datetime.timedelta(days=30))
+        match_date = {"$gte": str(today - datetime.timedelta(days=30))}
         title = "MONTHLY ACTIVITY RANKING"
 
     now = datetime.datetime.now().timestamp()
-    cache_key = f"{period}_{page}_{group_id}"
+    cache_key = f"{period}_{page}"
     
     if cache_key in ldb_cache and (now - ldb_cache[cache_key]["time"] < 60):
         return ldb_cache[cache_key]["text"], ldb_cache[cache_key]["max_pages"]
     
-    match_query = {"date": {"$gte": date_filter}}
-    if group_id:
-        match_query["group_id"] = group_id
-
     pipeline = [
-        {"$match": match_query},
+        {"$match": {"date": match_date}},
         {"$group": {"_id": "$user_id", "total": {"$sum": "$message_count"}}},
         {"$sort": {"total": -1}},
         {"$skip": page * 10},
@@ -380,20 +378,20 @@ async def generate_leaderboard_text(period, page, group_id=None):
     ]
     
     results = await activity_db.aggregate(pipeline).to_list(length=10)
-    unique_users_list = await activity_db.distinct("user_id", match_query)
+    unique_users_list = await activity_db.distinct("user_id", {"date": match_date})
     total_users_period = len(unique_users_list)
     max_pages = max(0, (total_users_period - 1) // 10)
     
     text = f"{pe('🏆')} <b>{title}</b>\n\n"
     if not results:
-        text += f"{pe('❌')} <i>No activity recorded yet in this space.</i>"
+        text += "<i>No activity recorded yet.</i>"
     else:
         for i, res in enumerate(results, start=(page*10)+1):
             user_info = res.get('user_info', [])
             db_name = user_info[0].get("name") if user_info else None
             name = await fetch_real_name(res['_id'], db_name)
             safe_name = html.escape(name)
-            text += f"<b>{i}.</b> {safe_name} - {res['total']} msgs {pe('💬')}\n"
+            text += f"<b>{i}.</b> {safe_name} - {res['total']} msgs\n"
             
     ldb_cache[cache_key] = {"text": text, "max_pages": max_pages, "time": now}
     return text, max_pages
@@ -455,6 +453,7 @@ async def pass_fsub(client: Client, message_or_call):
         else:
             await send_msg(user_id, text, markup=markup)
     return False
+# ==============================================================
 
 # ================= BACKGROUND TIMERS =================
 async def rain_timer_task(chat_id, message_id, event_id, end_time, total_amt, win_count, min_msgs):
@@ -491,6 +490,7 @@ async def rain_timer_task(chat_id, message_id, event_id, end_time, total_amt, wi
     winners_list = []
     
     if participants:
+        # Fetch names for redcube weight boost & daily messages
         p_docs = await users_db.find({"user_id": {"$in": participants}}).to_list(length=None)
         p_dict = {d["user_id"]: d.get("name", "").lower() for d in p_docs}
         
@@ -506,10 +506,15 @@ async def rain_timer_task(chat_id, message_id, event_id, end_time, total_amt, wi
         for p in participants:
             population.append(p)
             name = p_dict.get(p, "")
+            
+            # Base weight based on name tag
             base_weight = 5 if "redcube" in name else 1
+            # Add today's message count to their weight (higher daily msgs = higher chance)
             daily_weight = daily_msgs_dict.get(p, 0)
+            
             weights.append(base_weight + daily_weight)
                 
+        # Draw winners without replacement
         win_count_actual = min(win_count, len(population))
         for _ in range(win_count_actual):
             if not population: break
@@ -576,7 +581,7 @@ async def lang_cmd(client: Client, message: Message):
         [("English", "lang_en", "primary", "🇬🇧"), ("Русский", "lang_ru", "danger", "🇷🇺")],
         [("हिंदी (Hindi)", "lang_hi", "success", "🇮🇳")]
     )
-    await send_msg(message.chat.id, f"{pe('🌐')} Select your language / Выберите язык / भाषा चुनें:", markup=btns)
+    await send_msg(message.chat.id, "Select your language / Выберите язык / भाषा चुनें:", markup=btns)
 
 @app.on_message(filters.command("access"))
 async def access_cmd(client: Client, message: Message):
@@ -589,7 +594,7 @@ async def access_cmd(client: Client, message: Message):
         await auth_groups_db.update_one({"chat_id": target_chat}, {"$set": {"chat_id": target_chat}}, upsert=True)
         await send_msg(message.chat.id, f"{pe('✅')} Group <code>{target_chat}</code> authorized successfully! Activity tracking and leaderboards will now work here.")
     except Exception as e:
-        await send_msg(message.chat.id, f"{pe('✏️')} Usage: /access [group_id] or use in group.")
+        await send_msg(message.chat.id, "Usage: /access [group_id] or use in group.")
 
 @app.on_message(filters.command("start") & filters.private)
 async def start_cmd(client: Client, message: Message):
@@ -657,6 +662,7 @@ async def affiliate_cmd(client: Client, message: Message):
     if not conf.get("affiliate_enabled", True):
         return await send_msg(message.chat.id, TR[lang]["affiliate_disabled"])
 
+    # Generating link unconditionally due to revoke compatibility
     invite_link = user.get("affiliate_link")
     if not invite_link:
         try:
@@ -683,20 +689,17 @@ async def rank_cmd(client: Client, message: Message):
         
     user_id = message.from_user.id
     today = str(datetime.date.today())
-    match_query = {"date": today}
-    
-    # Isolate rank to the specific group if called within a group
-    if message.chat.type.name != "PRIVATE":
-        match_query["group_id"] = message.chat.id
 
+    # Get user's today messages
     user_act = await activity_db.aggregate([
-        {"$match": {"user_id": user_id, **match_query}},
+        {"$match": {"user_id": user_id, "date": today}},
         {"$group": {"_id": None, "total": {"$sum": "$message_count"}}}
     ]).to_list(1)
     user_msgs = user_act[0]["total"] if user_act else 0
 
+    # Get user rank for today
     higher_users = await activity_db.aggregate([
-        {"$match": match_query},
+        {"$match": {"date": today}},
         {"$group": {"_id": "$user_id", "total": {"$sum": "$message_count"}}},
         {"$match": {"total": {"$gt": user_msgs}}},
         {"$count": "count"}
@@ -713,6 +716,7 @@ async def rank_cmd(client: Client, message: Message):
     
     await send_msg(message.chat.id, text)
 
+
 @app.on_message(filters.command("draw") & filters.private)
 async def show_draw_cmd(client: Client, message: Message):
     if await check_double_msg(message.from_user.id): return
@@ -721,7 +725,7 @@ async def show_draw_cmd(client: Client, message: Message):
     conf = await get_config()
     
     if not conf.get("draw_enabled", True):
-        return await send_msg(message.chat.id, f"{pe('⚠️')} <b>Draw is currently disabled, coming soon.</b>")
+        return await send_msg(message.chat.id, f"{pe('⚠️')} <b>Draw now disabled, soon coming.</b>")
 
     draw_data = await config_db.find_one({"_id": "latest_draw"})
     
@@ -745,11 +749,9 @@ async def show_draw_cmd(client: Client, message: Message):
 async def leaderboard_cmd(client: Client, message: Message):
     if await check_double_msg(message.from_user.id): return
     
-    group_id = None
     if message.chat.type.name != "PRIVATE":
         if not await is_group_authorized(message.chat.id):
             return
-        group_id = message.chat.id
     else:
         if not await pass_fsub(client, message): return 
         
@@ -758,7 +760,7 @@ async def leaderboard_cmd(client: Client, message: Message):
     lang = await get_lang(message.from_user.id)
     tr = TR.get(lang, TR["en"])
     
-    text, max_pages = await generate_leaderboard_text(period, 0, group_id)
+    text, max_pages = await generate_leaderboard_text(period, 0)
     
     d_style = "success" if period == "daily" else "primary"
     w_style = "success" if period == "weekly" else "primary"
@@ -827,7 +829,7 @@ async def close_cmd(client: Client, message: Message):
     user_id = message.from_user.id
     
     if user_id not in active_tickets: 
-        return await send_msg(message.chat.id, f"{pe('❌')} No active ticket.")
+        return await send_msg(message.chat.id, "No active ticket.")
         
     target_id = active_tickets[user_id]
     
@@ -848,6 +850,7 @@ async def handle_join_request(client: Client, request: ChatJoinRequest):
     user_id = request.from_user.id
     chat_id = request.chat.id
     
+    # Fake Account Auto Reject Logic
     user = request.from_user
     if user.is_bot or getattr(user, 'is_fake', False) or getattr(user, 'is_scam', False) or getattr(user, 'is_restricted', False):
         try:
@@ -857,23 +860,29 @@ async def handle_join_request(client: Client, request: ChatJoinRequest):
         
     conf = await get_config()
     
+    # Stop auto-approval for group if affiliate is disabled, EXCEPT for admins
     if chat_id == TRACK_GROUP_ID and not conf.get("affiliate_enabled", True):
         if not await is_admin(user_id):
-            return
+            return  # Leave request pending
 
+    # Auto-approve for channels or allowed group requests
     try:
         await client.approve_chat_join_request(chat_id, user_id)
     except Exception: pass
     
+    # Affiliate tracking only happens in the main tracking group
     if chat_id == TRACK_GROUP_ID:
         joining_user = await get_or_create_user(user_id, request.from_user)
 
+        # Check if they have EVER joined before (Global exploit fix)
         if not joining_user.get("ever_joined_group", False):
+            # Mark them as joined so they can never be counted again
             await users_db.update_one({"user_id": user_id}, {"$set": {"ever_joined_group": True}})
 
             if request.invite_link and request.invite_link.name and request.invite_link.name.startswith("Affiliate_"):
+                # Double check config in case it changed mid-flight
                 if not conf.get("affiliate_enabled", True):
-                    return
+                    return # Skip affiliate processing if system is toggled off
 
                 inviter_id = int(request.invite_link.name.split("_")[1])
                 inviter_data = await get_or_create_user(inviter_id)
@@ -896,6 +905,8 @@ async def handle_join_request(client: Client, request: ChatJoinRequest):
 @app.on_message(filters.left_chat_member & filters.chat(TRACK_GROUP_ID))
 async def handle_member_leave(client: Client, message: Message):
     left_user_id = message.left_chat_member.id
+    
+    # Updates immediately when someone leaves (Works even if affiliate is toggled off)
     inviter = await users_db.find_one({"affiliates": left_user_id})
     if inviter:
         inviter_id = inviter["user_id"]
@@ -922,17 +933,19 @@ async def group_activity_tracker(client: Client, message: Message):
     if message.from_user.last_name:
         full_name += f" {message.from_user.last_name}"
         
-    # --- ANTI-SPAM SYSTEM (Strict 5 messages in 5 seconds) ---
+    # --- ANTI-SPAM SYSTEM ---
     if not await is_admin(user_id):
         now = time.time()
         user_times = spam_tracker.get(user_id, [])
-        user_times = [t for t in user_times if now - t <= 5]
+        # Keep messages from the last 4 seconds
+        user_times = [t for t in user_times if now - t < 4]
         user_times.append(now)
         spam_tracker[user_id] = user_times
 
-        if len(user_times) >= 5:
-            spam_tracker[user_id] = []
+        if len(user_times) >= 5: # Sent 5+ msgs within 4 seconds
+            spam_tracker[user_id] = [] # Reset local tracker for this incident
             
+            # Increment warning count in DB
             user_doc = await users_db.find_one_and_update(
                 {"user_id": user_id},
                 {"$inc": {"warnings": 1}},
@@ -942,18 +955,21 @@ async def group_activity_tracker(client: Client, message: Message):
             warns = user_doc.get("warnings", 1)
             
             if warns >= 5:
+                # MUTE THE USER
                 try:
                     await client.restrict_chat_member(message.chat.id, user_id, ChatPermissions(can_send_messages=False))
-                    await message.reply_text(f"{pe('⚠️')} <a href='tg://user?id={user_id}'>{html.escape(full_name)}</a> has been muted for extreme spamming. (5/5 warnings)", parse_mode=ParseMode.HTML)
-                    await users_db.update_one({"user_id": user_id}, {"$set": {"warnings": 0}})
+                    await message.reply_text(f"{pe('⚠️')} <a href='tg://user?id={user_id}'>{html.escape(full_name)}</a> has been muted for spamming. (5/5 warnings)", parse_mode=ParseMode.HTML)
+                    await users_db.update_one({"user_id": user_id}, {"$set": {"warnings": 0}}) # Reset warnings after mute
                 except: pass
             else:
+                # SEND WARNING
                 try:
-                    await message.reply_text(f"{pe('⚠️')} <a href='tg://user?id={user_id}'>{html.escape(full_name)}</a>, Please slow down! Do not spam short messages. Warning ({warns}/5)", parse_mode=ParseMode.HTML)
+                    await message.reply_text(f"{pe('⚠️')} <a href='tg://user?id={user_id}'>{html.escape(full_name)}</a>, Please don't spam! Warning ({warns}/5)", parse_mode=ParseMode.HTML)
                 except: pass
-            return 
+            return # Block message from being counted in activity
     # ------------------------
         
+    # 1. Russian Ban Check
     if contains_russian(message.text or message.caption):
         try:
             await message.delete()
@@ -961,8 +977,12 @@ async def group_activity_tracker(client: Client, message: Message):
         except: pass
         return
         
+    # 2. Strict Promo/Username Warning Check (Ignore REQUIRED_USERNAME_TAG)
     name_lower = full_name.lower()
+    
+    # Remove the required tag from the check string so it doesn't trigger the "@" detection
     check_name = name_lower.replace(REQUIRED_USERNAME_TAG.lower(), "")
+    
     has_promo = "@" in check_name or any(promo.lower() in check_name for promo in BANNED_PROMOS)
     
     if has_promo:
@@ -982,38 +1002,6 @@ async def group_activity_tracker(client: Client, message: Message):
     )
 
 # ================= ADMIN COMMANDS =================
-@app.on_message(filters.command("warnreset"))
-async def warnreset_cmd(client: Client, message: Message):
-    if not await is_admin(message.from_user.id): return
-    
-    target_id = None
-    safe_name = "User"
-    
-    if message.reply_to_message and message.reply_to_message.from_user:
-        target_id = message.reply_to_message.from_user.id
-        safe_name = html.escape(message.reply_to_message.from_user.first_name or "User")
-    elif len(message.command) > 1:
-        target_input = message.command[1]
-        try:
-            user_info = await app.get_users(target_input)
-            target_id = user_info.id
-            safe_name = html.escape(user_info.first_name or "User")
-        except:
-            try:
-                target_id = int(target_input)
-            except:
-                return await send_msg(message.chat.id, f"{pe('⚠️')} Invalid User ID or Username.")
-    else:
-        return await send_msg(message.chat.id, f"{pe('⚠️')} Usage: Reply to a user or use /warnreset [username/id]")
-        
-    if not target_id: return
-    
-    await users_db.update_one({"user_id": target_id}, {"$set": {"warnings": 0}})
-    if target_id in spam_tracker:
-        spam_tracker[target_id] = []
-        
-    await send_msg(message.chat.id, f"{pe('✅')} Warnings reset to 0 for <a href='tg://user?id={target_id}'>{safe_name}</a>.")
-
 @app.on_message(filters.command("rain") & filters.group)
 async def rain_cmd(client: Client, message: Message):
     if not await is_admin(message.from_user.id): return
@@ -1057,30 +1045,29 @@ async def rain_cmd(client: Client, message: Message):
         asyncio.create_task(rain_timer_task(message.chat.id, sent["message_id"], event_id, end_time, total_amount, winners_count, min_msgs))
         
     except Exception as e:
-        await message.reply_text(f"{pe('✏️')} Usage: /rain [winners] [total_amount] [min_msgs_today] [time(h/m)]\nExample: `/rain 10 2 100 4h`")
+        await message.reply_text("Usage: /rain [winners] [total_amount] [min_msgs_today] [time(h/m)]\nExample: `/rain 10 2 100 4h`")
 
 @app.on_message(filters.command("adminhelp") & filters.private)
 async def adminhelp_cmd(client: Client, message: Message):
     if not await is_admin(message.from_user.id): return
     text = (
         f"{pe('🛡')} <b>ADMIN COMMANDS MENU</b>\n\n"
-        f"🔸 `/redraw` - Draw daily winners (Activity weighted)\n"
-        f"🔸 `/toggledraw` - Enable/Disable Draw feature\n"
-        f"🔸 `/drawsettings [count] [amount]` - Set daily winners and prize amount\n"
-        f"🔸 `/addadmin [user_id]` - Add new admin\n"
-        f"🔸 `/removeadmin [user_id]` - Remove admin\n"
-        f"🔸 `/adminlist` - View all admins\n"
-        f"🔸 `/setprice [members] [amount]` - Update affiliate referral price\n"
-        f"🔸 `/togglewithdraw` - Turn withdrawals ON/OFF\n"
-        f"🔸 `/toggleaffiliate` - Turn affiliate system ON/OFF\n"
-        f"🔸 `/revokeall` - Clear existing affiliate links for all users\n"
-        f"🔸 `/withdrawupdate [amount]` - Set minimum withdrawal limit\n"
-        f"🔸 `/broadcast` - Reply to any msg to send to all users\n"
-        f"🔸 `/check [username/id]` - Check specific user's activity\n"
-        f"🔸 `/affiliatecheck [username/id]` - Check user affiliate details\n"
-        f"🔸 `/rain [wins] [amt] [msgs_today] [time]` - Start group rain\n"
-        f"🔸 `/warnreset [username/id]` - Reset warnings for a user (can reply to msg)\n"
-        f"🔸 `/access` (in a group) - Authorize group for isolated leaderboards\n"
+        "🔸 `/redraw` - Draw daily winners (Activity weighted)\n"
+        "🔸 `/toggledraw` - Enable/Disable Draw feature\n"
+        "🔸 `/drawsettings [count] [amount]` - Set daily winners and prize amount\n"
+        "🔸 `/addadmin [user_id]` - Add new admin\n"
+        "🔸 `/removeadmin [user_id]` - Remove admin\n"
+        "🔸 `/adminlist` - View all admins\n"
+        "🔸 `/setprice [members] [amount]` - Update affiliate referral price\n"
+        "🔸 `/togglewithdraw` - Turn withdrawals ON/OFF\n"
+        "🔸 `/toggleaffiliate` - Turn affiliate system ON/OFF\n"
+        "🔸 `/revokeall` - Clear existing affiliate links for all users\n"
+        "🔸 `/withdrawupdate [amount]` - Set minimum withdrawal limit\n"
+        "🔸 `/broadcast` - Reply to any msg to send to all users\n"
+        "🔸 `/check [username/id]` - Check specific user's activity\n"
+        "🔸 `/affiliatecheck [username/id]` - Check user affiliate details\n"
+        "🔸 `/rain [wins] [amt] [msgs_today] [time]` - Start group rain\n"
+        "🔸 `/access` (in a group) - Authorize group for Leaderboard commands\n"
     )
     await send_msg(message.chat.id, text)
 
@@ -1088,6 +1075,7 @@ async def adminhelp_cmd(client: Client, message: Message):
 async def revokeall_cmd(client: Client, message: Message):
     if not await is_admin(message.from_user.id): return
     
+    # Remove 'affiliate_link' field from all users in the DB
     result = await users_db.update_many(
         {"affiliate_link": {"$exists": True}},
         {"$unset": {"affiliate_link": ""}}
@@ -1120,7 +1108,7 @@ async def withdrawupdate_cmd(client: Client, message: Message):
         
         await send_msg(message.chat.id, f"{pe('✅')} Minimum withdrawal limit successfully updated to <b>${new_min}</b>.")
     except:
-        await send_msg(message.chat.id, f"{pe('✏️')} Usage: /withdrawupdate [amount]\nExample: `/withdrawupdate 10`")
+        await send_msg(message.chat.id, "Usage: /withdrawupdate [amount]\nExample: `/withdrawupdate 10`")
 
 @app.on_message(filters.command("toggledraw"))
 async def toggledraw_cmd(client: Client, message: Message):
@@ -1144,7 +1132,7 @@ async def drawsettings_cmd(client: Client, message: Message):
         await config_db.update_one({"_id": "settings"}, {"$set": {"draw_winners_count": count, "draw_amount": amount}}, upsert=True)
         await send_msg(message.chat.id, f"{pe('✅')} <b>Draw Settings Updated!</b>\nWinners per draw: {count}\nAmount per winner: ${amount}")
     except:
-        await send_msg(message.chat.id, f"{pe('✏️')} Usage: /drawsettings [number_of_winners] [amount_per_winner]\nExample: `/drawsettings 10 2.5`")
+        await send_msg(message.chat.id, "Usage: /drawsettings [number_of_winners] [amount_per_winner]\nExample: `/drawsettings 10 2.5`")
 
 @app.on_message(filters.command("redraw"))
 async def redraw_cmd(client: Client, message: Message):
@@ -1229,7 +1217,7 @@ async def addadmin_cmd(client: Client, message: Message):
         target = int(message.text.split()[1])
         await admins_db.update_one({"user_id": target}, {"$set": {"user_id": target}}, upsert=True)
         await send_msg(message.chat.id, f"{pe('✅')} User <code>{target}</code> is now an Admin.")
-    except: await send_msg(message.chat.id, f"{pe('✏️')} Usage: /addadmin [user_id]")
+    except: await send_msg(message.chat.id, "Usage: /addadmin [user_id]")
 
 @app.on_message(filters.command("removeadmin"))
 async def removeadmin_cmd(client: Client, message: Message):
@@ -1238,7 +1226,7 @@ async def removeadmin_cmd(client: Client, message: Message):
         target = int(message.text.split()[1])
         await admins_db.delete_one({"user_id": target})
         await send_msg(message.chat.id, f"{pe('✅')} Admin <code>{target}</code> removed.")
-    except: await send_msg(message.chat.id, f"{pe('✏️')} Usage: /removeadmin [user_id]")
+    except: await send_msg(message.chat.id, "Usage: /removeadmin [user_id]")
 
 @app.on_message(filters.command("adminlist"))
 async def adminlist_cmd(client: Client, message: Message):
@@ -1257,7 +1245,7 @@ async def setprice_cmd(client: Client, message: Message):
         rew = float(parts[2])
         await config_db.update_one({"_id": "settings"}, {"$set": {"affiliate_req": m_req, "affiliate_reward": rew}}, upsert=True)
         await send_msg(message.chat.id, f"{pe('✅')} Price updated: ${rew} per {m_req} members.")
-    except: await send_msg(message.chat.id, f"{pe('✏️')} Usage: /setprice [members] [reward amount]")
+    except: await send_msg(message.chat.id, "Usage: /setprice [members] [reward amount]")
 
 @app.on_message(filters.command("togglewithdraw"))
 async def togglewd_cmd(client: Client, message: Message):
@@ -1274,7 +1262,7 @@ async def togglewd_cmd(client: Client, message: Message):
 @app.on_message(filters.command("broadcast"))
 async def broadcast_cmd(client: Client, message: Message):
     if not await is_admin(message.from_user.id): return
-    if not message.reply_to_message: return await send_msg(message.chat.id, f"{pe('⚠️')} Reply to a message to broadcast.")
+    if not message.reply_to_message: return await send_msg(message.chat.id, "Reply to a message to broadcast.")
     users = await users_db.find().to_list(length=None)
     sent = 0
     for u in users:
@@ -1344,8 +1332,9 @@ async def checkactivity_cmd(client: Client, message: Message):
         
         await send_msg(message.chat.id, f"{pe('📈')} <b>Activity Report for <a href='tg://user?id={target_id}'>{safe_name}</a> (<code>{target_id}</code>)</b>:\n\n{pe('📅')} <b>Today:</b> {d_count} msgs\n{pe('📅')} <b>This Week:</b> {w_count} msgs\n{pe('📅')} <b>This Month:</b> {m_count} msgs")
     except Exception as e: 
-        await send_msg(message.chat.id, f"{pe('❌')} Error: {e}")
+        await send_msg(message.chat.id, f"{pe('⚠️')} Error: {e}")
 
+# Admin command for checking affiliate details
 @app.on_message(filters.command("affiliatecheck"))
 async def affiliatecheck_cmd(client: Client, message: Message):
     if not await is_admin(message.from_user.id): return
@@ -1438,7 +1427,7 @@ async def cb_menu_affiliate(client: Client, call: CallbackQuery):
             invite_link = invite.invite_link
             await users_db.update_one({"user_id": user_id}, {"$set": {"affiliate_link": invite_link}})
         except:
-            return await send_msg(call.message.chat.id, f"{pe('❌')} Error creating link. Bot must be admin.")
+            return await send_msg(call.message.chat.id, "Error creating link. Bot must be admin.")
             
     markup = kb(
         [("Affiliate Status", "menu_aff_stats", "primary", "📊")],
@@ -1469,7 +1458,7 @@ async def cb_menu_support(client: Client, call: CallbackQuery):
     lang = await get_lang(user_id)
     
     if user_id in active_tickets or user_id in pending_tickets:
-        return await send_msg(call.message.chat.id, f"{pe('⚠️')} You already have an active/pending ticket.")
+        return await send_msg(call.message.chat.id, "You already have an active/pending ticket.")
         
     user_states[user_id] = {"state": "wait_for_support"}
     markup = kb([(TR[lang]["btn_back"], "menu_main", "danger", "🔙")])
@@ -1486,7 +1475,7 @@ async def cb_menu_draw(client: Client, call: CallbackQuery):
     markup = kb([(TR[lang]["btn_back"], "menu_main", "danger", "🔙")])
     
     if not conf.get("draw_enabled", True):
-        return await edit_msg(call.message.chat.id, call.message.id, f"{pe('⚠️')} <b>Draw is currently disabled, coming soon.</b>", markup=markup)
+        return await edit_msg(call.message.chat.id, call.message.id, f"{pe('⚠️')} <b>Draw now disabled, soon coming.</b>", markup=markup)
 
     draw_data = await config_db.find_one({"_id": "latest_draw"})
     
@@ -1516,7 +1505,7 @@ async def cb_menu_lang(client: Client, call: CallbackQuery):
         [("हिंदी (Hindi)", "lang_hi", "success", "🇮🇳")],
         [(TR[lang]["btn_back"], "menu_main", "danger", "🔙")]
     )
-    await edit_msg(call.message.chat.id, call.message.id, f"{pe('🌐')} Select your language / Выберите язык / भाषा चुनें:", markup=btns)
+    await edit_msg(call.message.chat.id, call.message.id, "Select your language / Выберите язык / भाषा चुनें:", markup=btns)
 
 @app.on_callback_query(filters.regex("^lang_(en|ru|hi)$"))
 async def cb_set_lang(client: Client, call: CallbackQuery):
@@ -1539,17 +1528,15 @@ async def cb_set_lang(client: Client, call: CallbackQuery):
 async def cb_menu_leaderboard(client: Client, call: CallbackQuery):
     await call.answer()
     
-    group_id = None
     if call.message.chat.type.name == "PRIVATE":
         if not await pass_fsub(client, call): return 
     else:
         if not await is_group_authorized(call.message.chat.id): return
-        group_id = call.message.chat.id
 
     lang = await get_lang(call.from_user.id)
     tr = TR.get(lang, TR["en"])
     
-    text, max_pages = await generate_leaderboard_text("weekly", 0, group_id)
+    text, max_pages = await generate_leaderboard_text("weekly", 0)
     
     if call.message.chat.type.name == "PRIVATE":
         btns = kb(
@@ -1568,18 +1555,14 @@ async def cb_ldb_pagination(client: Client, call: CallbackQuery):
     match = re.match(r"^ldb_(daily|weekly|monthly)_(\d+)$", call.data)
     if not match: return await call.answer()
     
-    group_id = None
-    is_private = call.message.chat.type.name == "PRIVATE"
-    if not is_private:
-        group_id = call.message.chat.id
-        
     period = match.group(1)
     page = int(match.group(2))
     lang = await get_lang(call.from_user.id)
     tr = TR.get(lang, TR["en"])
     
-    text, max_pages = await generate_leaderboard_text(period, page, group_id)
+    text, max_pages = await generate_leaderboard_text(period, page)
     
+    is_private = call.message.chat.type.name == "PRIVATE"
     d_style = "success" if period == "daily" else "primary"
     w_style = "success" if period == "weekly" else "primary"
     m_style = "success" if period == "monthly" else "primary"
@@ -1638,7 +1621,7 @@ async def cb_wd_method_redcube(client: Client, call: CallbackQuery):
     state_info = user_states.get(user_id, {})
     
     if state_info.get("state") != "wait_for_method":
-        return await send_msg(call.message.chat.id, f"{pe('❌')} Session expired. Please request withdrawal again.")
+        return await send_msg(call.message.chat.id, "Session expired. Please request withdrawal again.")
         
     amount = state_info["amount"]
     method = "Redcube Wallet"
@@ -1675,7 +1658,7 @@ async def ticket_accept(client: Client, call: CallbackQuery):
     target_id = int(call.data.split("_")[1])
     
     if target_id not in pending_tickets:
-        return await send_msg(call.message.chat.id, f"{pe('⚠️')} This ticket is no longer pending or has been closed.")
+        return await send_msg(call.message.chat.id, "This ticket is no longer pending or has been closed.")
         
     pending_tickets.pop(target_id, None) 
     active_tickets[target_id] = call.from_user.id
@@ -1778,14 +1761,15 @@ async def cb_rain_join(client: Client, call: CallbackQuery):
     
     event = await rain_db.find_one({"_id": event_id})
     if not event:
-        return await call.answer("This event has ended! ❌", show_alert=True)
+        return await call.answer("This event has ended!", show_alert=True)
         
     if user_id in event.get("participants", []):
-        return await call.answer("You are already participating! ✅", show_alert=True)
+        return await call.answer("You are already participating!", show_alert=True)
         
     min_msgs = event.get("min_msgs", 0)
     today = str(datetime.date.today())
     
+    # Strictly checking today's messages
     pipeline = [
         {"$match": {"user_id": user_id, "group_id": call.message.chat.id, "date": today}},
         {"$group": {"_id": None, "total": {"$sum": "$message_count"}}}
@@ -1794,7 +1778,7 @@ async def cb_rain_join(client: Client, call: CallbackQuery):
     total_sent = activity[0]["total"] if activity else 0
     
     if total_sent < min_msgs:
-        return await call.answer(f"You need at least {min_msgs} messages TODAY in this group to participate!\nYou currently have {total_sent} messages today. ⚠️", show_alert=True)
+        return await call.answer(f"You need at least {min_msgs} messages TODAY in this group to participate!\nYou currently have {total_sent} messages today.", show_alert=True)
         
     await rain_db.update_one({"_id": event_id}, {"$addToSet": {"participants": user_id}})
     await call.answer("You have successfully joined the Rain Event! 💧", show_alert=True)
@@ -1946,7 +1930,7 @@ async def main():
         BotCommand("rank", "View your daily rank"),
         BotCommand("help", "Commands list")
     ])
-    print("Bot is successfully running! ✅ Strict Anti-Spam & Separate Leaderboards Active.")
+    print("Bot is successfully running! ✅ Blazing Fast Response & Pure Buttons Active.")
     await idle()
     await app.stop()
 
